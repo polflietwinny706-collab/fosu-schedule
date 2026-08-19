@@ -253,6 +253,22 @@
   .legend-item { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: var(--ink-2); }
   .legend-dot { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; margin-top: 2px; }
   .legend-item small { display: block; color: var(--ink-3); font-size: 11.5px; margin-top: 1px; }
+  .legend-type {
+    display: inline-block; font-size: 10.5px; font-weight: 600;
+    padding: 2px 8px; border-radius: 999px; margin-left: 6px;
+    vertical-align: middle; white-space: nowrap;
+  }
+  .legend-type.pub { background: #dbeafe; color: #1d4ed8; }
+  .legend-type.ele { background: #ffedd5; color: #c2410c; }
+
+  /* 公共课/选修课类型切换按钮（管理员编辑模式下图例中显示） */
+  .legend-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+  .pub-toggle { border: none; border-radius: 999px; padding: 5px 12px; font-size: 11.5px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all 0.15s; }
+  .pub-toggle.pub { background: #dbeafe; color: #1d4ed8; }
+  .pub-toggle.ele { background: #ffedd5; color: #c2410c; }
+  .pub-toggle:hover { transform: translateY(-1px); }
+  .legend-del { border: none; border-radius: 999px; padding: 5px 12px; font-size: 11.5px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all 0.15s; background: #fef2f2; color: #dc2626; }
+  .legend-del:hover { background: #dc2626; color: #fff; transform: translateY(-1px); }
 
   .empty-cell { color: var(--ink-3); font-size: 11.5px; }
   .footer { text-align: center; color: var(--ink-3); font-size: 12px; margin-top: 24px; }
@@ -394,7 +410,8 @@
     <div class="edit-hint">
       <b>编辑模式已开启：</b>① 拖动课程卡片到任意格子，选「合并/调换」处理（含全部周次，节次块长度不变）；
       ② 拖动列顶表头到另一列，可整列「合并/调换」；③ 点击带 <b>＋</b> 的空格子添加课程；
-      ④ 点课程卡片右上角 <b>×</b> 删除该排课（课程无排课后整门删除）；⑤ 上方输入框可修改<b>网站标题</b>与<b>小标题</b>（大标题上方那行）。
+      ④ 点课程卡片右上角 <b>×</b> 删除该排课（课程无排课后整门删除）；⑤ 上方输入框可修改<b>网站标题</b>与<b>小标题</b>（大标题上方那行）；
+      ⑥ 底部课程图例中每门课右侧有「公共课/选修课」切换按钮，点击可修改类型——公共课普通用户不可隐藏，选修课允许本机隐藏；旁有「✕ 删除课程」按钮可直接删除整门课程（含全部排课）。
       每次修改自动保存，用户网页 3 秒内自动同步。
     </div>
 
@@ -490,6 +507,13 @@
           <label>新课程名称</label>
           <input id="fNewName" type="text" placeholder="例如：矩阵论" />
         </div>
+        <div class="form-row">
+          <label>课程类型（公共课不可隐藏 / 选修课允许普通用户本机隐藏）</label>
+          <select id="fPub">
+            <option value="false">选修课（可隐藏）</option>
+            <option value="true">公共课（不可隐藏）</option>
+          </select>
+        </div>
         <div class="form-flex">
           <div class="form-row">
             <label>授课教师</label>
@@ -559,21 +583,21 @@
 <script>
 /* ===== 课程数据（内置兜底；正常从 /api/schedule 加载，编辑后保存回去） ===== */
 let COURSES = [
-  { id: 1, name: "自然辩证法概论", code: "217502", teacher: "赵春姬", cls: "c1", credit: 1, hours: null,
+  { id: 1, name: "自然辩证法概论", code: "217502", teacher: "赵春姬", cls: "c1", pub: true, credit: 1, hours: null,
     slots: [ { weeks: [[2,5],[7,7]], day: 4, slot: [3,4,5], loc: "会通楼 405" }, { weeks: [[8,8]], day: 4, slot: [3], loc: "会通楼 404" } ] },
-  { id: 2, name: "高级综合英语", code: "217001", teacher: "钟艳", cls: "c2", credit: 3, hours: null,
+  { id: 2, name: "高级综合英语", code: "217001", teacher: "钟艳", cls: "c2", pub: true, credit: 3, hours: null,
     slots: [ { weeks: [[2,13]], day: 2, slot: [3,4,5], loc: "信息楼 102" }, { weeks: [[2,4]], day: 1, slot: [3,4,5], loc: "信息楼 102" }, { weeks: [[14,14]], day: 3, slot: [3,4,5], loc: "信息楼 102" } ] },
-  { id: 3, name: "新时代中国特色社会主义理论与实践", code: "", teacher: "卿向忠", cls: "c3", credit: 2, hours: null,
+  { id: 3, name: "新时代中国特色社会主义理论与实践", code: "", teacher: "卿向忠", cls: "c3", pub: true, credit: 2, hours: null,
     slots: [ { weeks: [[2,11]], day: 4, slot: [8,9,10], loc: "信息楼 102" }, { weeks: [[12,12]], day: 4, slot: [8,9], loc: "信息楼 102" } ] },
-  { id: 4, name: "泛函分析", code: "254101", teacher: "赵仁际", cls: "c4", credit: 2, hours: null,
+  { id: 4, name: "泛函分析", code: "254101", teacher: "赵仁际", cls: "c4", pub: false, credit: 2, hours: null,
     slots: [ { weeks: [[2,11]], day: 2, slot: [8,9,10], loc: "会通楼 518" }, { weeks: [[12,12]], day: 2, slot: [8,9], loc: "会通楼 518" } ] },
-  { id: 5, name: "拓扑学基础", code: "254129", teacher: "张志鹏", cls: "c5", credit: 2, hours: null,
+  { id: 5, name: "拓扑学基础", code: "254129", teacher: "张志鹏", cls: "c5", pub: false, credit: 2, hours: null,
     slots: [ { weeks: [[2,18]], day: 4, slot: [6,7], loc: "会通楼 517" } ] },
-  { id: 6, name: "抽象代数", code: "254127", teacher: "梁洪雪", cls: "c6", credit: 2, hours: null,
+  { id: 6, name: "抽象代数", code: "254127", teacher: "梁洪雪", cls: "c6", pub: false, credit: 2, hours: null,
     slots: [ { weeks: [[2,11]], day: 3, slot: [11,12,13], loc: "励耘楼 524" }, { weeks: [[12,12]], day: 3, slot: [11,12], loc: "励耘楼 524" } ] },
-  { id: 7, name: "线性系统理论", code: "254103", teacher: "吴泽浩", cls: "c7", credit: 2, hours: 32,
+  { id: 7, name: "线性系统理论", code: "254103", teacher: "吴泽浩", cls: "c7", pub: false, credit: 2, hours: 32,
     slots: [ { weeks: [[2,11]], day: 1, slot: [8,9,10], loc: "微格室 524" }, { weeks: [[12,12]], day: 1, slot: [8,9], loc: "微格室 524" } ] },
-  { id: 8, name: "常微分方程", code: "254122", teacher: "唐耀彬", cls: "c8", credit: 2, hours: 32,
+  { id: 8, name: "常微分方程", code: "254122", teacher: "唐耀彬", cls: "c8", pub: false, credit: 2, hours: 32,
     slots: [ { weeks: [[2,2],[5,13]], day: 5, slot: [3,4,5], loc: "微格室 524" }, { weeks: [[14,14]], day: 5, slot: [3,4], loc: "微格室 524" } ] }
 ];
 
@@ -596,6 +620,14 @@ const TIME_SLOTS = {
   13: { start: "20:05", end: "20:45" },
   14: { start: "20:50", end: "21:30" }
 };
+
+/* 公共课/选修课标记：pub=true 公共课（不可隐藏），pub=false 选修课（可隐藏）。
+   旧数据无 pub 字段时按默认公共课列表（政治+英语）补全。 */
+const DEFAULT_PUBLIC_IDS = [1, 2, 3];
+function ensurePub(c) {
+  if (c.pub === undefined) c.pub = DEFAULT_PUBLIC_IDS.includes(c.id);
+  return c;
+}
 
 const WEEK_MIN = 2;
 const WEEK_MAX = 18;
@@ -1010,6 +1042,32 @@ function deleteSlot(courseId, slotIndex) {
   });
 }
 
+/* 切换课程的公共课/选修课类型（公共课不可隐藏，选修课允许普通用户本机隐藏） */
+function togglePub(courseId) {
+  const c = COURSES.find(x => x.id === courseId);
+  if (!c) return;
+  c.pub = !c.pub;
+  afterEdit(`已将「${c.name}」设为${c.pub ? "公共课（不可隐藏）" : "选修课（可隐藏）"}`);
+}
+
+/* 删除整门课程（图例中操作，含确认弹窗） */
+function deleteCourse(courseId) {
+  const c = COURSES.find(x => x.id === courseId);
+  if (!c) return;
+  const slotCount = c.slots.length;
+  const desc = slotCount > 0
+    ? `${c.name}（含 ${slotCount} 条排课记录）`
+    : `${c.name}（无排课记录）`;
+  openChoice("删除课程", `确定删除：${desc}？此操作不可撤销。`, [
+    { label: "取消", value: "cancel", style: "ghost" },
+    { label: "确认删除", value: "delete", style: "danger" }
+  ]).then(v => {
+    if (v !== "delete") return;
+    COURSES = COURSES.filter(x => x.id !== courseId);
+    afterEdit(`已删除课程「${c.name}」`);
+  });
+}
+
 /* 解析输入："2-11" / "2,5-13" -> [[2,11],[5,13]] */
 function parseWeeks(str) {
   const parts = String(str).split(/[,，、;；\s]+/).filter(Boolean);
@@ -1078,6 +1136,7 @@ function updateCourseFields() {
     document.getElementById("fTeacher").value = "";
     document.getElementById("fLoc").value = "";
     document.getElementById("fCredit").value = "2";
+    document.getElementById("fPub").value = "false";
   } else {
     const c = COURSES.find(x => x.id === +selVal);
     if (c) {
@@ -1085,6 +1144,7 @@ function updateCourseFields() {
       document.getElementById("fCredit").value = String(c.credit || 2);
       const last = c.slots[c.slots.length - 1];
       document.getElementById("fLoc").value = last ? last.loc : "";
+      document.getElementById("fPub").value = c.pub ? "true" : "false";
     }
   }
 }
@@ -1107,13 +1167,15 @@ function submitAdd() {
     if (!name) { showToast("请填写新课程名称"); return; }
     if (!teacher) { showToast("请填写授课教师"); return; }
     const maxId = COURSES.reduce((m, c) => Math.max(m, c.id), 0);
-    course = { id: maxId + 1, name, code: "", teacher, cls: nextCls(), credit, hours: null, slots: [] };
+    const pubVal = document.getElementById("fPub").value === "true";
+    course = { id: maxId + 1, name, code: "", teacher, cls: nextCls(), pub: pubVal, credit, hours: null, slots: [] };
     COURSES.push(course);
   } else {
     course = COURSES.find(c => c.id === +selVal);
     if (!course) return;
     if (teacher) course.teacher = teacher;
     course.credit = credit;
+    course.pub = document.getElementById("fPub").value === "true";
   }
   course.slots.push({ weeks, day, slot: slots, loc });
   closeModal();
@@ -1307,11 +1369,31 @@ function renderLegend() {
     item.innerHTML = `
       <div class="legend-dot ${c.cls}"></div>
       <div>
-        <div>${c.name}${c.code ? ' (' + c.code + ')' : ''}</div>
+        <div>${c.name}${c.code ? ' (' + c.code + ')' : ''}<span class="legend-type ${c.pub ? 'pub' : 'ele'}">${c.pub ? '公共课' : '选修课'}</span></div>
         <small>${c.teacher} 老师 · ${c.credit}学分${c.hours ? ' / ' + c.hours + '学时' : ''}</small>
         <small>${timeLoc}</small>
       </div>
     `;
+    if (editMode) {
+      const actions = document.createElement("div");
+      actions.className = "legend-actions";
+
+      const btn = document.createElement("button");
+      btn.className = "pub-toggle " + (c.pub ? "pub" : "ele");
+      btn.textContent = c.pub ? "公共课 · 不可隐藏" : "选修课 · 可隐藏";
+      btn.title = "点击切换该课程的公共课/选修课类型";
+      btn.addEventListener("click", () => togglePub(c.id));
+      actions.appendChild(btn);
+
+      const del = document.createElement("button");
+      del.className = "legend-del";
+      del.textContent = "✕ 删除课程";
+      del.title = "删除整门课程（含所有排课）";
+      del.addEventListener("click", () => deleteCourse(c.id));
+      actions.appendChild(del);
+
+      item.appendChild(actions);
+    }
     list.appendChild(item);
   });
 }
@@ -1339,6 +1421,7 @@ editBtn.addEventListener("click", async () => {
   editBtn.classList.toggle("on", editMode);
   editBtn.textContent = editMode ? "✓ 完成编辑" : "✎ 编辑";
   if (editMode) { applyTitle(); applySubtitle(); } // 进入编辑模式时同步标题/小标题输入框
+  renderLegend();
   render();
 });
 
@@ -1377,6 +1460,7 @@ async function loadSchedule() {
     // 服务器不可达（未启动或 file:// 打开）：恢复草稿（若有），编辑会在保存时再次暂存
     if (draftValid) {
       COURSES = draft.courses;
+      COURSES.forEach(ensurePub);
       applyTitle(draft.title);
       applySubtitle(draft.subtitle);
       dataEdited = true;
@@ -1395,6 +1479,7 @@ async function loadSchedule() {
   // （baseRev 与服务器 rev 一致，或草稿产生于离线状态 => 恢复；服务器已更新 => 丢弃草稿）
   if (draftValid && (draft.baseRev === null || draft.baseRev === data.rev)) {
     COURSES = draft.courses;
+    COURSES.forEach(ensurePub);
     applyTitle(draft.title);
     applySubtitle(draft.subtitle);
     rev = data.rev || 1;
@@ -1416,6 +1501,7 @@ async function loadSchedule() {
 
   if (data && Array.isArray(data.courses) && data.courses.length) {
     COURSES = data.courses;
+    COURSES.forEach(ensurePub);
     applyTitle(data.title);
     applySubtitle(data.subtitle);
     rev = data.rev || 1;

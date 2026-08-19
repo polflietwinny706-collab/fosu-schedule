@@ -168,10 +168,63 @@
   .legend-item { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: var(--ink-2); }
   .legend-dot { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; margin-top: 2px; }
   .legend-item small { display: block; color: var(--ink-3); font-size: 11.5px; margin-top: 1px; }
+  .legend-type {
+    display: inline-block; font-size: 10.5px; font-weight: 600;
+    padding: 2px 8px; border-radius: 999px; margin-left: 6px;
+    vertical-align: middle; white-space: nowrap;
+  }
+  .legend-type.pub { background: #dbeafe; color: #1d4ed8; }
+  .legend-type.ele { background: #ffedd5; color: #c2410c; }
 
   .empty-cell { color: var(--ink-3); font-size: 11.5px; }
   .footer { text-align: center; color: var(--ink-3); font-size: 12px; margin-top: 24px; }
   .day-header .date-tag { font-size: 10px; font-weight: 400; opacity: 0.75; margin-top: 2px; }
+
+  /* ===== 隐藏课程按钮（右上角浮动） ===== */
+  .hide-toggle {
+    position: fixed; top: 16px; right: 16px; z-index: 900;
+    border: none; border-radius: 999px; padding: 10px 18px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    background: rgba(255,255,255,0.95); color: #1e3a8a;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+    transition: all 0.2s ease; letter-spacing: 0.02em;
+  }
+  .hide-toggle:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.22); }
+
+  /* ===== 隐藏课程管理面板 ===== */
+  .hide-overlay {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.35);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1050; opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease; padding: 20px;
+  }
+  .hide-overlay.show { opacity: 1; pointer-events: auto; }
+  .hide-card {
+    background: #fff; border-radius: 20px; width: 100%; max-width: 460px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25); overflow: hidden;
+    max-height: 86vh; display: flex; flex-direction: column;
+    transform: scale(0.9); transition: transform 0.25s ease;
+  }
+  .hide-overlay.show .hide-card { transform: scale(1); }
+  .hide-head { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; padding: 20px 26px; }
+  .hide-head .hh-title { font-size: 18px; font-weight: 700; }
+  .hide-head .hh-sub { font-size: 12.5px; opacity: 0.9; margin-top: 4px; line-height: 1.6; }
+  .hide-body { padding: 14px 18px 18px; overflow-y: auto; }
+  .hide-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 12px; margin-bottom: 8px; background: #f8fafc; }
+  .hide-row.pub { opacity: 0.62; }
+  .hide-info { display: flex; align-items: center; gap: 10px; }
+  .hide-dot { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+  .hide-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .hide-row small { display: block; color: var(--ink-3); font-size: 11.5px; margin-top: 1px; }
+  .hide-switch { border: none; border-radius: 999px; padding: 7px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; background: #e5e7eb; color: var(--ink-2); transition: all 0.15s; font-family: inherit; }
+  .hide-switch.on { background: #f97316; color: #fff; }
+  .hide-switch:hover { transform: translateY(-1px); }
+  .hide-lock { font-size: 12px; color: var(--ink-3); background: #f1f5f9; padding: 5px 12px; border-radius: 999px; }
+  .hide-foot { display: flex; gap: 10px; justify-content: flex-end; padding: 14px 18px; border-top: 1px solid var(--line); }
+  .hide-foot .btn { border: none; border-radius: 10px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .hide-foot .btn.ghost { background: #f1f5f9; color: var(--ink-2); }
+  .hide-foot .btn.primary { background: var(--primary); color: #fff; }
 
   /* ===== 课程详情面板 ===== */
   .detail-overlay {
@@ -265,6 +318,8 @@
 </style>
 </head>
 <body>
+  <button class="hide-toggle" id="hideToggle" title="管理本机隐藏的课程">◐ 隐藏课程</button>
+
   <header class="header">
     <div class="header-inner">
       <div class="school" id="appSubtitle">佛山大学 · 2026 年秋季学期</div>
@@ -333,6 +388,21 @@
     </div>
   </div>
 
+  <!-- 隐藏课程管理面板 -->
+  <div class="hide-overlay" id="hideOverlay">
+    <div class="hide-card">
+      <div class="hide-head">
+        <div class="hh-title">隐藏课程管理</div>
+        <div class="hh-sub">仅「选修课」可隐藏，公共课始终显示。隐藏状态只在本机生效，不会同步给其他人，刷新或重新进入后保持。</div>
+      </div>
+      <div class="hide-body" id="hideList"></div>
+      <div class="hide-foot">
+        <button class="btn ghost" id="hideClose">关闭</button>
+        <button class="btn primary" id="hideShowAll">全部显示</button>
+      </div>
+    </div>
+  </div>
+
 <script>
 /* ===== 课程默认数据（内置兜底；正常运行时由服务器 /api/schedule 提供，管理员端修改后自动同步） =====
    课程 1-6：来自桌面"课表.jpg"（图片识别）
@@ -342,7 +412,7 @@
 let COURSES = [
   {
     id: 1, name: "自然辩证法概论", code: "217502",
-    teacher: "赵春姬", cls: "c1",
+    teacher: "赵春姬", cls: "c1", pub: true,
     credit: 1, hours: null,
     slots: [
       { weeks: [[2,5],[7,7]], day: 4, slot: [3,4,5], loc: "会通楼 405" },
@@ -351,7 +421,7 @@ let COURSES = [
   },
   {
     id: 2, name: "高级综合英语", code: "217001",
-    teacher: "钟艳", cls: "c2",
+    teacher: "钟艳", cls: "c2", pub: true,
     credit: 3, hours: null,
     slots: [
       { weeks: [[2,13]], day: 2, slot: [3,4,5], loc: "信息楼 102" },
@@ -361,7 +431,7 @@ let COURSES = [
   },
   {
     id: 3, name: "新时代中国特色社会主义理论与实践", code: "",
-    teacher: "卿向忠", cls: "c3",
+    teacher: "卿向忠", cls: "c3", pub: true,
     credit: 2, hours: null,
     slots: [
       { weeks: [[2,11]], day: 4, slot: [8,9,10], loc: "信息楼 102" },
@@ -370,7 +440,7 @@ let COURSES = [
   },
   {
     id: 4, name: "泛函分析", code: "254101",
-    teacher: "赵仁际", cls: "c4",
+    teacher: "赵仁际", cls: "c4", pub: false,
     credit: 2, hours: null,
     slots: [
       { weeks: [[2,11]], day: 2, slot: [8,9,10], loc: "会通楼 518" },
@@ -379,7 +449,7 @@ let COURSES = [
   },
   {
     id: 5, name: "拓扑学基础", code: "254129",
-    teacher: "张志鹏", cls: "c5",
+    teacher: "张志鹏", cls: "c5", pub: false,
     credit: 2, hours: null,
     slots: [
       { weeks: [[2,18]], day: 4, slot: [6,7], loc: "会通楼 517" }
@@ -387,7 +457,7 @@ let COURSES = [
   },
   {
     id: 6, name: "抽象代数", code: "254127",
-    teacher: "梁洪雪", cls: "c6",
+    teacher: "梁洪雪", cls: "c6", pub: false,
     credit: 2, hours: null,
     slots: [
       { weeks: [[2,11]], day: 3, slot: [11,12,13], loc: "励耘楼 524" },
@@ -396,7 +466,7 @@ let COURSES = [
   },
   {
     id: 7, name: "线性系统理论", code: "254103",
-    teacher: "吴泽浩", cls: "c7",
+    teacher: "吴泽浩", cls: "c7", pub: false,
     credit: 2, hours: 32,
     slots: [
       { weeks: [[2,11]], day: 1, slot: [8,9,10], loc: "微格室 524" },
@@ -405,7 +475,7 @@ let COURSES = [
   },
   {
     id: 8, name: "常微分方程", code: "254122",
-    teacher: "唐耀彬", cls: "c8",
+    teacher: "唐耀彬", cls: "c8", pub: false,
     credit: 2, hours: 32,
     slots: [
       { weeks: [[2,2],[5,13]], day: 5, slot: [3,4,5], loc: "微格室 524" },
@@ -435,6 +505,26 @@ const TIME_SLOTS = {
   13: { start: "20:05", end: "20:45" },
   14: { start: "20:50", end: "21:30" }
 };
+
+/* ===== 公共课/选修课标记与本地隐藏（仅本机 localStorage，不与后端同步） =====
+   pub=true 为公共课（不可隐藏，始终显示）；pub=false 为选修课（普通用户可本机隐藏）。
+   旧数据无 pub 字段时，按默认公共课列表（政治+英语）补全。 */
+const DEFAULT_PUBLIC_IDS = [1, 2, 3];
+function ensurePub(c) {
+  if (c.pub === undefined) c.pub = DEFAULT_PUBLIC_IDS.includes(c.id);
+  return c;
+}
+const HIDDEN_KEY = "fosu_hidden";
+function getHiddenMap() {
+  try { return JSON.parse(localStorage.getItem(HIDDEN_KEY) || "{}"); }
+  catch (_) { return {}; }
+}
+function setHiddenMap(m) {
+  try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(m)); } catch (_) {}
+}
+function isHidden(c) {
+  return !c.pub && !!getHiddenMap()[c.id];
+}
 
 const WEEK_MIN = 2;
 const WEEK_MAX = 18;
@@ -474,6 +564,7 @@ function weekInRanges(week, ranges) {
 function buildWeek(week) {
   const schedule = ROWS.map(() => [[],[],[],[],[],[],[]]);
   COURSES.forEach(c => {
+    if (isHidden(c)) return;
     c.slots.forEach(s => {
       if (!weekInRanges(week, s.weeks)) return;
       s.slot.forEach(slotNum => {
@@ -547,7 +638,7 @@ overlay.addEventListener("click", (e) => {
   if (e.target === overlay) hideDetail();
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") hideDetail();
+  if (e.key === "Escape") { hideDetail(); closeHidePanel(); }
 });
 
 function render() {
@@ -670,6 +761,7 @@ function renderLegend() {
   const list = document.getElementById("legendList");
   list.innerHTML = "";
   COURSES.forEach(c => {
+    if (isHidden(c)) return;
     const item = document.createElement("div");
     item.className = "legend-item";
     const timeLoc = c.slots.map(s => {
@@ -681,7 +773,7 @@ function renderLegend() {
     item.innerHTML = `
       <div class="legend-dot ${c.cls}"></div>
       <div>
-        <div>${c.name}${c.code ? ' (' + c.code + ')' : ''}</div>
+        <div>${c.name}${c.code ? ' (' + c.code + ')' : ''}<span class="legend-type ${c.pub ? 'pub' : 'ele'}">${c.pub ? '公共课' : '选修课'}</span></div>
         <small>${c.teacher} 老师 · ${c.credit}学分${c.hours ? ' / ' + c.hours + '学时' : ''}</small>
         <small>${timeLoc}</small>
       </div>
@@ -732,6 +824,7 @@ async function loadSchedule() {
       lastRev = data.rev;
       dataEdited = !!data.edited;
       COURSES = data.courses;
+      COURSES.forEach(ensurePub);
       applyTitle(data.title);
       applySubtitle(data.subtitle);
       renderLegend();
@@ -744,6 +837,64 @@ renderLegend();
 render();
 loadSchedule();
 setInterval(loadSchedule, 3000);
+
+/* ===== 隐藏课程管理（仅本机 localStorage，不与后端同步） ===== */
+const hideOverlay = document.getElementById("hideOverlay");
+document.getElementById("hideToggle").addEventListener("click", openHidePanel);
+document.getElementById("hideClose").addEventListener("click", closeHidePanel);
+document.getElementById("hideShowAll").addEventListener("click", () => {
+  setHiddenMap({});
+  renderLegend(); render(); renderHideList();
+});
+hideOverlay.addEventListener("click", (e) => { if (e.target === hideOverlay) closeHidePanel(); });
+
+function openHidePanel() { renderHideList(); hideOverlay.classList.add("show"); }
+function closeHidePanel() { hideOverlay.classList.remove("show"); }
+
+function renderHideList() {
+  const box = document.getElementById("hideList");
+  box.innerHTML = "";
+  const map = getHiddenMap();
+  const electives = COURSES.filter(c => !c.pub);
+  const publics = COURSES.filter(c => c.pub);
+  electives.forEach(c => {
+    const row = document.createElement("div");
+    row.className = "hide-row";
+    const hidden = !!map[c.id];
+    row.innerHTML = `
+      <div class="hide-info">
+        <span class="hide-dot ${c.cls}"></span>
+        <div>
+          <div class="hide-name">${c.name}</div>
+          <small>${c.teacher} 老师 · 选修</small>
+        </div>
+      </div>
+      <button class="hide-switch ${hidden ? "on" : ""}">${hidden ? "已隐藏" : "显示中"}</button>
+    `;
+    row.querySelector(".hide-switch").addEventListener("click", () => {
+      const m = getHiddenMap();
+      if (m[c.id]) delete m[c.id]; else m[c.id] = true;
+      setHiddenMap(m);
+      renderLegend(); render(); renderHideList();
+    });
+    box.appendChild(row);
+  });
+  publics.forEach(c => {
+    const row = document.createElement("div");
+    row.className = "hide-row pub";
+    row.innerHTML = `
+      <div class="hide-info">
+        <span class="hide-dot ${c.cls}"></span>
+        <div>
+          <div class="hide-name">${c.name}</div>
+          <small>${c.teacher} 老师 · 公共课</small>
+        </div>
+      </div>
+      <span class="hide-lock">不可隐藏</span>
+    `;
+    box.appendChild(row);
+  });
+}
 </script>
 </body>
 </html>
