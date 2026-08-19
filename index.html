@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>佛山大学 26级数学 研究生课表 · 入口</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #1e3a8a 0%, #4f46e5 50%, #7c3aed 100%);
+    color: #fff; padding: 24px;
+  }
+  .card {
+    background: rgba(255,255,255,0.12);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.28);
+    border-radius: 22px; padding: 40px 44px; max-width: 560px; width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center;
+  }
+  .school { font-size: 13px; letter-spacing: 0.12em; opacity: 0.85; }
+  h1 { font-size: 24px; margin: 8px 0 26px; letter-spacing: 0.02em; }
+  a.btn {
+    display: block; margin: 14px 0; padding: 16px 22px;
+    background: rgba(255,255,255,0.95); color: #1e3a8a;
+    border-radius: 14px; text-decoration: none;
+    font-size: 15.5px; font-weight: 700; letter-spacing: 0.03em;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  }
+  a.btn small { display: block; font-size: 12px; color: #64748b; font-weight: 500; margin-top: 4px; }
+  a.btn:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,0.26); }
+  a.btn.admin { background: #16a34a; color: #fff; }
+  a.btn.admin small { color: rgba(255,255,255,0.85); }
+  .tip { font-size: 12px; opacity: 0.8; margin-top: 22px; line-height: 1.7; text-align: left; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="school">佛山大学 · 2026 年秋季学期</div>
+    <h1>26 级数学专业 研究生周课表</h1>
+    <a class="btn" href="user.html">
+      👥 用户课表
+      <small>查看课表 · 管理员修改后 3 秒内自动同步</small>
+    </a>
+    <a class="btn admin" href="admin.html">
+      ✎ 管理员课表
+      <small>编辑课表（拖拽 / 添加 / 删除），保存后自动同步到用户端</small>
+    </a>
+    <div class="tip">
+      提示：本地预览请访问 http://127.0.0.1:8766/ ；正式发布后请通过你的 *.pages.dev 域名访问。
+      直接双击磁盘上的 HTML 文件（file:// 方式）打开时无法连接数据服务器，编辑将无法保存与同步。
+    </div>
+  </div>
+</body>
+</html>
