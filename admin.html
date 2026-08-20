@@ -106,12 +106,6 @@
     background: var(--primary); color: #fff; border-color: var(--primary);
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
   }
-  .week-btn.today { position: relative; }
-  .week-btn.today::after {
-    content: "今天"; position: absolute; top: -8px; right: -6px;
-    background: var(--accent); color: #fff; font-size: 9px;
-    padding: 1px 5px; border-radius: 999px; font-weight: 700; letter-spacing: 0.05em;
-  }
   .quick-btn:hover { border-color: var(--accent); color: var(--accent); }
 
   .meta-card {
@@ -126,7 +120,20 @@
     padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
   }
   .meta-card .pill.warn { background: var(--accent-soft); color: var(--accent); }
-  .meta-card .pill.today-pill { background: #dcfce7; color: #16a34a; }
+  /* 备注输入框（编辑模式下显示）：圆角药丸、小字体、虚线橙边，与页面小字体风格一致 */
+  .meta-card .note-input {
+    border: 1px dashed var(--accent); background: #fffbeb; color: var(--accent);
+    border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 600;
+    font-family: inherit; outline: none; width: 280px; max-width: 100%;
+    transition: all 0.15s ease;
+  }
+  .meta-card .note-input:focus {
+    border-style: solid; background: #fff;
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+  }
+  .meta-card .note-input::placeholder {
+    color: var(--accent); opacity: 0.55; font-weight: 500;
+  }
 
   .grid-wrap {
     background: var(--panel); border-radius: 14px; padding: 14px;
@@ -441,10 +448,10 @@
 
     <div class="meta-card">
       <div class="wk" id="wkBig">第 2 周</div>
-      <div class="desc" id="wkDesc">查看本周所有课程安排</div>
+      <div class="desc" id="wkDesc">查看所选周课程安排</div>
       <span class="pill" id="wkCount">0 节课</span>
-      <span class="pill today-pill" id="wkToday"></span>
-      <span class="pill warn" id="wkNote"></span>
+      <span class="pill warn" id="wkNote" style="display:none;"></span>
+      <input type="text" id="wkNoteInput" class="note-input" maxlength="80" placeholder="本周备注（仅本周可见，留空则不显示）" style="display:none;" />
     </div>
 
     <div class="grid-wrap">
@@ -642,16 +649,8 @@ function getWeekDate(week, day) {
 function formatDateDisplay(date) {
   return `${date.getMonth() + 1}/${date.getDate()}`;
 }
-function computeCurrentWeek() {
-  const base = new Date(2026, 8, 14);
-  const now = new Date();
-  const baseMs = new Date(base.getFullYear(), base.getMonth(), base.getDate()).getTime();
-  const nowMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const diffDays = Math.floor((nowMs - baseMs) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return WEEK_MIN;
-  const week = 2 + Math.floor(diffDays / 7);
-  return Math.max(WEEK_MIN, Math.min(WEEK_MAX, week));
-}
+/* 已移除自动定位函数 computeCurrentWeek：周次改为由 localStorage 记忆上次选择（见 loadWeek / saveWeek） */
+
 function weekInRanges(week, ranges) {
   return ranges.some(([a,b]) => week >= a && week <= b);
 }
@@ -660,6 +659,9 @@ function weekInRanges(week, ranges) {
 let editMode = false;
 let rev = 1;
 let dataEdited = false;
+/* 备注：键=周次（字符串），值=备注文本（仅本周可见） */
+let NOTES = {};
+let lastNoteWeek = null;   // 记录上次同步过输入框的周次，避免输入过程中被 render() 重置
 let dirty = false;        // 本地有未成功保存到服务器的修改
 let syncedRev = null;     // 服务器上当前数据对应的 rev（null=尚未与服务器同步过）
 let saving = false;       // 防止保存请求并发重入
@@ -769,7 +771,7 @@ function readDraft() {
 }
 function saveDraft() {
   try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ baseRev: syncedRev, title: SITE_TITLE, subtitle: SITE_SUBTITLE, courses: COURSES }));
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ baseRev: syncedRev, title: SITE_TITLE, subtitle: SITE_SUBTITLE, courses: COURSES, notes: NOTES }));
   } catch (_) {}
 }
 function clearDraft() {
@@ -795,8 +797,20 @@ function buildWeek(week) {
   return schedule;
 }
 
-let currentWeek = computeCurrentWeek();
-const todayWeek = computeCurrentWeek();
+/* 周次记忆：优先读取本地 localStorage 中上次选择的周次；未记录则用默认起始周（WEEK_MIN）。
+   不再自动定位到“今天”所在周，由浏览器记住用户上一次点击的周次。 */
+const WEEK_KEY = "fosu_week";
+function loadWeek() {
+  try {
+    const v = parseInt(localStorage.getItem(WEEK_KEY), 10);
+    if (!isNaN(v) && v >= WEEK_MIN && v <= WEEK_MAX) return v;
+  } catch (_) {}
+  return WEEK_MIN;
+}
+function saveWeek() {
+  try { localStorage.setItem(WEEK_KEY, String(currentWeek)); } catch (_) {}
+}
+let currentWeek = loadWeek();
 
 /* ===== 详情面板 ===== */
 const overlay = document.getElementById("detailOverlay");
@@ -889,7 +903,7 @@ async function save(quiet, retried403) {
   if (saving) return;
   saving = true;
   try {
-    const payload = { rev: rev + 1, edited: true, title: SITE_TITLE, subtitle: SITE_SUBTITLE, courses: COURSES };
+    const payload = { rev: rev + 1, edited: true, title: SITE_TITLE, subtitle: SITE_SUBTITLE, courses: COURSES, notes: NOTES };
     const r = await fetch("/api/schedule", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Admin-Key": getAdminKey() || "" },
@@ -1201,10 +1215,9 @@ function render() {
     const b = document.createElement("button");
     let cls = "week-btn";
     if (w === currentWeek) cls += " active";
-    if (w === todayWeek) cls += " today";
     b.className = cls;
     b.textContent = `第 ${w} 周`;
-    b.onclick = () => { currentWeek = w; render(); };
+    b.onclick = () => { currentWeek = w; saveWeek(); render(); };
     wb.appendChild(b);
   }
 
@@ -1215,21 +1228,29 @@ function render() {
   schedule.forEach(row => row.forEach(cell => count += cell.length));
   document.getElementById("wkCount").textContent = `${count} 节课`;
 
-  const todayEl = document.getElementById("wkToday");
-  todayEl.textContent = currentWeek === todayWeek ? "本周" : "";
-
-  // 备注（管理员修改过数据后不再显示基于原课表的固定备注）
-  const note = document.getElementById("wkNote");
-  let noteText = "";
-  if (!dataEdited) {
-    if (currentWeek === 3 || currentWeek === 4) noteText = "常微分方程本周停课（仅第2周、5-13周上课）";
-    if (currentWeek === 6) noteText = "自然辩证法概论本周停课（第6周跳过）";
-    if (currentWeek === 8) noteText = "自然辩证法概论本周仅第3节，改至会通楼404";
-    if (currentWeek === 12) noteText = "多门课程缩减：新时代/泛函8-9节、抽象代数11-12节、线性系统理论8-9节";
-    if (currentWeek === 14) noteText = "高级综合英语调至周三；常微分方程缩减为3-4节（最后一周）";
-    if (currentWeek >= 15) noteText = "本周仅拓扑学基础在上课";
+  // 备注：管理员写入的本周备注（仅本周可见，切到其他周自动隐藏；编辑模式下变为可编辑输入框）
+  const wkNoteEl = document.getElementById("wkNote");
+  const wkNoteInput = document.getElementById("wkNoteInput");
+  const noteText = (NOTES[currentWeek] || "").trim();
+  if (editMode) {
+    wkNoteEl.style.display = "none";
+    wkNoteInput.style.display = "";
+    // 仅在切周或退出/进入编辑模式时同步输入框值，避免输入过程中被 render() 重置
+    if (lastNoteWeek !== currentWeek) {
+      wkNoteInput.value = NOTES[currentWeek] || "";
+      lastNoteWeek = currentWeek;
+    }
+  } else {
+    wkNoteInput.style.display = "none";
+    lastNoteWeek = null; // 下次进入编辑模式时强制重新同步
+    if (noteText) {
+      wkNoteEl.textContent = noteText;
+      wkNoteEl.style.display = "";
+    } else {
+      wkNoteEl.textContent = "";
+      wkNoteEl.style.display = "none";
+    }
   }
-  note.textContent = noteText;
 
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
@@ -1404,7 +1425,8 @@ document.querySelectorAll(".quick-btn").forEach(btn => {
     const act = btn.dataset.act;
     if (act === "prev") currentWeek = Math.max(WEEK_MIN, currentWeek - 1);
     if (act === "next") currentWeek = Math.min(WEEK_MAX, currentWeek + 1);
-    if (act === "reset") currentWeek = todayWeek;
+    if (act === "reset") currentWeek = loadWeek();
+    saveWeek();
     render();
   });
 });
@@ -1463,6 +1485,7 @@ async function loadSchedule() {
       COURSES.forEach(ensurePub);
       applyTitle(draft.title);
       applySubtitle(draft.subtitle);
+      NOTES = draft.notes || {};
       dataEdited = true;
       dirty = true;
       renderLegend();
@@ -1482,6 +1505,7 @@ async function loadSchedule() {
     COURSES.forEach(ensurePub);
     applyTitle(draft.title);
     applySubtitle(draft.subtitle);
+    NOTES = draft.notes || {};
     rev = data.rev || 1;
     dataEdited = true;
     dirty = true;
@@ -1504,6 +1528,7 @@ async function loadSchedule() {
     COURSES.forEach(ensurePub);
     applyTitle(data.title);
     applySubtitle(data.subtitle);
+    NOTES = data.notes || {};
     rev = data.rev || 1;
     syncedRev = rev;
     dataEdited = !!data.edited;
@@ -1511,6 +1536,18 @@ async function loadSchedule() {
     render();
   }
 }
+
+/* 备注输入框事件绑定：实时更新 NOTES 并静默保存（不触发 render()，避免输入过程中重置光标位置） */
+const wkNoteInputEl = document.getElementById("wkNoteInput");
+wkNoteInputEl.addEventListener("input", (e) => {
+  NOTES[currentWeek] = e.target.value;
+  dirty = true;
+  save(true);  // 静默保存，不弹 toast
+});
+wkNoteInputEl.addEventListener("blur", () => {
+  // 离开输入框时确保最后状态已保存
+  if (dirty) save(true);
+});
 
 renderLegend();
 render();

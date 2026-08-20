@@ -19,7 +19,8 @@
     --shadow: 0 6px 24px rgba(15, 23, 42, 0.06);
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
+  /* ===== 改动（响应式改造）：全局禁止横向溢出，手机端不出现横向滚动条 ===== */
+  html, body { margin: 0; padding: 0; overflow-x: hidden; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
       "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
@@ -61,21 +62,7 @@
     background: var(--primary); color: #fff; border-color: var(--primary);
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
   }
-  .week-btn.today {
-    position: relative;
-  }
-  .week-btn.today::after {
-    content: "今天";
-    position: absolute;
-    top: -8px; right: -6px;
-    background: var(--accent);
-    color: #fff;
-    font-size: 9px;
-    padding: 1px 5px;
-    border-radius: 999px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-  }
+  /* 已移除「今天」徽章：不再自动定位当前周，周次由 localStorage 记忆上次选择 */
   .quick-btn:hover { border-color: var(--accent); color: var(--accent); }
 
   .meta-card {
@@ -90,7 +77,6 @@
     padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
   }
   .meta-card .pill.warn { background: var(--accent-soft); color: var(--accent); }
-  .meta-card .pill.today-pill { background: #dcfce7; color: #16a34a; }
 
   .grid-wrap {
     background: var(--panel); border-radius: 14px; padding: 14px;
@@ -315,6 +301,46 @@
     .detail-card { max-width: 100%; }
     .detail-banner, .detail-body { padding-left: 20px; padding-right: 20px; }
   }
+
+  /* ===== 新增（响应式改造 A-Plus）：手机端"显示周六、周日"切换控件（桌面端隐藏，仅 ≤768px 显示） ===== */
+  .weekend-toggle {
+    display: none; /* 桌面端隐藏，仅手机端显示 */
+  }
+
+  /* ===== 新增（响应式改造 A-Plus）：≤768px 手机端保留原始 table 矩阵，仅默认隐藏周六/周日两列 =====
+     硬性约束：table 表格完整保留（绝不 display:none 整表），不生成竖向卡片；
+     仅通过 CSS 隐藏第7/8列（周六、周日）并收缩列宽，使 6 列完整适配手机宽度、无整页横向滚动条。 */
+  @media (max-width: 768px) {
+    /* 切换控件在手机端显示：复选框 + 文字【显示周六、周日】，位于课表表格之前 */
+    .weekend-toggle {
+      display: flex; align-items: center; gap: 9px;
+      background: var(--panel); border-radius: 12px; padding: 12px 16px;
+      box-shadow: var(--shadow); margin-bottom: 12px; cursor: pointer;
+      font-size: 14px; color: var(--ink-2); font-weight: 600;
+    }
+    .weekend-toggle input[type="checkbox"] {
+      width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; margin: 0;
+    }
+    /* 手机端默认：6 列表格（节次 + 周一~周五），隐藏周六/周日的第7/8列，收缩列宽铺满屏幕 */
+    .grid {
+      grid-template-columns: 56px repeat(5, minmax(0, 1fr));
+      min-width: 0;            /* 允许收缩到手机宽度，避免整页横向滚动 */
+    }
+    /* 第7列=周六、第8列=周日（每行列数固定为8：节次+7天 → 8n+7 / 8n+8） */
+    .grid > :nth-child(8n+7),
+    .grid > :nth-child(8n+8) {
+      display: none;
+    }
+    /* 已勾选"显示周六、周日"：恢复 8 列表格并强制最小宽度，由 .grid-wrap 局部横向滑动 */
+    .grid.show-weekend {
+      grid-template-columns: 56px repeat(7, minmax(86px, 1fr));
+      min-width: 720px;        /* 超过手机宽度 → .grid-wrap 触发横向滚动 */
+    }
+    .grid.show-weekend > .gh:nth-child(8n+7),
+    .grid.show-weekend > .gh:nth-child(8n+8) { display: block; }
+    .grid.show-weekend > .gc:nth-child(8n+7),
+    .grid.show-weekend > .gc:nth-child(8n+8) { display: flex; }
+  }
 </style>
 </head>
 <body>
@@ -341,11 +367,16 @@
 
     <div class="meta-card">
       <div class="wk" id="wkBig">第 2 周</div>
-      <div class="desc" id="wkDesc">查看本周所有课程安排</div>
+      <div class="desc" id="wkDesc">查看所选周课程安排</div>
       <span class="pill" id="wkCount">0 节课</span>
-      <span class="pill today-pill" id="wkToday"></span>
       <span class="pill warn" id="wkNote"></span>
     </div>
+
+    <!-- ===== 新增（响应式改造 A-Plus）：手机端"显示周六、周日"切换控件，放在课表表格之前 ===== -->
+    <label class="weekend-toggle" id="weekendToggle">
+      <input type="checkbox" id="showWeekendChk" />
+      <span>显示周六、周日</span>
+    </label>
 
     <div class="grid-wrap">
       <div class="grid" id="grid"></div>
@@ -409,6 +440,8 @@
    课程 7-8：来自桌面"26级数学研究生课程开课表.xlsx"
    每条 slot 记录：weeks=[[起,止],...]，day=1~7，slot=[节次...]，loc=地点
 */
+/* 备注：键=周次（字符串），值=管理员写入的备注文本；当前周有则显示，无则隐藏 */
+let NOTES = {};
 let COURSES = [
   {
     id: 1, name: "自然辩证法概论", code: "217502",
@@ -541,20 +574,7 @@ function formatDateDisplay(date) {
   return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
-/* ===== 周次自动计算 =====
-   基准：2026年9月14日（星期一）= 第2周起始
-   当前周次 = 2 + floor((今天 - 基准日) / 7)
-*/
-function computeCurrentWeek() {
-  const base = new Date(2026, 8, 14); // 9月14日（星期一）= 第2周起始
-  const now = new Date();
-  const baseMs = new Date(base.getFullYear(), base.getMonth(), base.getDate()).getTime();
-  const nowMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const diffDays = Math.floor((nowMs - baseMs) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return WEEK_MIN; // 还没到开学，默认第2周
-  const week = 2 + Math.floor(diffDays / 7);
-  return Math.max(WEEK_MIN, Math.min(WEEK_MAX, week));
-}
+/* 已移除自动定位函数 computeCurrentWeek：周次改为由 localStorage 记忆上次选择（见 loadWeek / saveWeek） */
 
 function weekInRanges(week, ranges) {
   return ranges.some(([a,b]) => week >= a && week <= b);
@@ -582,8 +602,20 @@ function buildWeek(week) {
   return schedule;
 }
 
-let currentWeek = computeCurrentWeek();
-const todayWeek = computeCurrentWeek();
+/* 周次记忆：优先读取本地 localStorage 中上次选择的周次；未记录则用默认起始周（WEEK_MIN）。
+   不再自动定位到“今天”所在周，由浏览器记住用户上一次点击的周次。 */
+const WEEK_KEY = "fosu_week";
+function loadWeek() {
+  try {
+    const v = parseInt(localStorage.getItem(WEEK_KEY), 10);
+    if (!isNaN(v) && v >= WEEK_MIN && v <= WEEK_MAX) return v;
+  } catch (_) {}
+  return WEEK_MIN;
+}
+function saveWeek() {
+  try { localStorage.setItem(WEEK_KEY, String(currentWeek)); } catch (_) {}
+}
+let currentWeek = loadWeek();
 
 /* ===== 详情面板 ===== */
 const overlay = document.getElementById("detailOverlay");
@@ -649,10 +681,9 @@ function render() {
     const b = document.createElement("button");
     let cls = "week-btn";
     if (w === currentWeek) cls += " active";
-    if (w === todayWeek) cls += " today";
     b.className = cls;
     b.textContent = `第 ${w} 周`;
-    b.onclick = () => { currentWeek = w; render(); };
+    b.onclick = () => { currentWeek = w; saveWeek(); render(); };
     wb.appendChild(b);
   }
 
@@ -664,38 +695,18 @@ function render() {
   schedule.forEach(row => row.forEach(cell => count += cell.length));
   document.getElementById("wkCount").textContent = `${count} 节课`;
 
-  // "今天"标签
-  const todayEl = document.getElementById("wkToday");
-  if (currentWeek === todayWeek) {
-    todayEl.textContent = "本周";
-  } else {
-    todayEl.textContent = "";
-  }
+  /* 已移除「今天/本周」标签：周次不再自动定位，由 localStorage 记忆上次选择 */
 
-  // 备注（仅原始默认数据显示特殊备注；管理员端修改并同步后不再显示）
+  // 备注：管理员写入的本周备注（仅本周可见，切到其他周自动隐藏；管理员编辑后 3 秒内轮询同步）
   const note = document.getElementById("wkNote");
-  let noteText = "";
-  if (!dataEdited) {
-    if (currentWeek === 3 || currentWeek === 4) {
-      noteText = "常微分方程本周停课（仅第2周、5-13周上课）";
-    }
-    if (currentWeek === 6) {
-      noteText = "自然辩证法概论本周停课（第6周跳过）";
-    }
-    if (currentWeek === 8) {
-      noteText = "自然辩证法概论本周仅第3节，改至会通楼404";
-    }
-    if (currentWeek === 12) {
-      noteText = "多门课程缩减：新时代/泛函8-9节、抽象代数11-12节、线性系统理论8-9节";
-    }
-    if (currentWeek === 14) {
-      noteText = "高级综合英语调至周三；常微分方程缩减为3-4节（最后一周）";
-    }
-    if (currentWeek >= 15) {
-      noteText = "本周仅拓扑学基础在上课";
-    }
+  const noteText = (NOTES[currentWeek] || "").trim();
+  if (noteText) {
+    note.textContent = noteText;
+    note.style.display = "";
+  } else {
+    note.textContent = "";
+    note.style.display = "none";
   }
-  note.textContent = noteText;
 
   // 表格
   const grid = document.getElementById("grid");
@@ -756,6 +767,19 @@ function render() {
   });
 }
 
+/* ===== 新增（响应式改造 A-Plus）：手机端"显示周六、周日"复选框 =====
+   仅切换 .grid 的 .show-weekend 类来控制第7/8列(周六、周日)显隐与 .grid-wrap 局部横向滚动；
+   不重新请求后端、不重新渲染课表、不改动任何原有业务逻辑与隐藏过滤逻辑。 */
+(function bindWeekendToggle() {
+  const chk = document.getElementById("showWeekendChk");
+  const grid = document.getElementById("grid");
+  if (!chk || !grid) return;
+  chk.addEventListener("change", () => {
+    if (chk.checked) grid.classList.add("show-weekend");
+    else grid.classList.remove("show-weekend");
+  });
+})();
+
 /* 图例 */
 function renderLegend() {
   const list = document.getElementById("legendList");
@@ -788,7 +812,8 @@ document.querySelectorAll(".quick-btn").forEach(btn => {
     const act = btn.dataset.act;
     if (act === "prev") currentWeek = Math.max(WEEK_MIN, currentWeek - 1);
     if (act === "next") currentWeek = Math.min(WEEK_MAX, currentWeek + 1);
-    if (act === "reset") currentWeek = todayWeek;
+    if (act === "reset") currentWeek = loadWeek();
+    saveWeek();
     render();
   });
 });
@@ -825,6 +850,7 @@ async function loadSchedule() {
       dataEdited = !!data.edited;
       COURSES = data.courses;
       COURSES.forEach(ensurePub);
+      NOTES = data.notes || {};
       applyTitle(data.title);
       applySubtitle(data.subtitle);
       renderLegend();
