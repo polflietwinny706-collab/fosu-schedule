@@ -267,6 +267,7 @@
   .fb-note {
     margin: 12px 0 0; padding: 10px 12px; background: #f5f3ff; border-radius: 10px;
     font-size: 12px; line-height: 1.7; color: #5b21b6;
+    white-space: pre-line; word-break: break-word; /* 支持管理员编辑的多行说明文本 */
   }
   .fb-note b { color: #4c1d95; }
   .fb-public-title { margin: 16px 0 8px; font-size: 13px; font-weight: 700; color: #4c1d95; }
@@ -566,12 +567,8 @@
       </div>
       <div class="fb-body">
         <textarea id="fbText" placeholder="请写下 bug、问题或者课程相关建议"></textarea>
-        <div class="fb-note">
-          <b>重要说明：</b><br>
-          1. 本课程表仅供参考，请以学校教务系统课表为准。<br>
-          2. 反馈不会即时回复，管理员定期查看。<br>
-          3. 请勿提交身份证、手机号等隐私信息。
-        </div>
+        <!-- 重要说明：内容由后端 /api/notice 提供，管理员可实时编辑，弹窗打开期间每3秒轮询更新 -->
+        <div class="fb-note" id="fbNote"></div>
         <div class="fb-public-title">公开问答</div>
         <div class="fb-public-list" id="fbPublicList"></div>
       </div>
@@ -1168,6 +1165,33 @@ function renderHideList() {
   var toastEl = document.getElementById("fbToast");
   var toastTimer = null;
 
+  // ===== 重要说明（管理员可实时编辑，弹窗打开期间每3秒轮询同步） =====
+  var noteEl = document.getElementById("fbNote");
+  var noticeTimer = null;
+  var DEFAULT_NOTICE =
+    "重要说明：\n" +
+    "1. 本课程表仅供参考，请以学校教务系统课表为准。\n" +
+    "2. 反馈不会即时回复，管理员定期查看。\n" +
+    "3. 请勿提交身份证、手机号等隐私信息。";
+
+  // GET /api/notice：读取说明并更新到弹窗（内容为空则隐藏说明框）
+  function loadNotice() {
+    fetch("/api/notice")
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var content = (d && d.ok && typeof d.content === "string") ? d.content : DEFAULT_NOTICE;
+        if (content.trim() === "") {
+          noteEl.style.display = "none";
+        } else {
+          noteEl.style.display = "";
+          noteEl.textContent = content;
+        }
+      })
+      .catch(function () {
+        // 网络异常保持原样（不闪断）
+      });
+  }
+
   function showToast(msg) {
     toastEl.textContent = msg;
     toastEl.classList.add("show");
@@ -1229,8 +1253,18 @@ function renderHideList() {
       .catch(function () { showToast("网络异常，请检查网络后重试"); });
   }
 
-  function openModal() { overlay.classList.add("show"); loadPublic(); }
-  function closeModal() { overlay.classList.remove("show"); }
+  // 打开弹窗：加载公开反馈 + 重要说明，并启动每3秒轮询（管理员修改说明后无需刷新即可看到）
+  function openModal() {
+    overlay.classList.add("show");
+    loadPublic();
+    loadNotice();
+    if (!noticeTimer) noticeTimer = setInterval(loadNotice, 3000);
+  }
+  // 关闭弹窗：停止说明轮询，避免无谓请求
+  function closeModal() {
+    overlay.classList.remove("show");
+    if (noticeTimer) { clearInterval(noticeTimer); noticeTimer = null; }
+  }
 
   document.getElementById("feedbackFab").addEventListener("click", openModal);
   document.getElementById("fbClose").addEventListener("click", closeModal);

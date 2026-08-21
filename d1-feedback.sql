@@ -11,3 +11,10 @@ CREATE TABLE IF NOT EXISTS feedback (
   adminReply  TEXT    DEFAULT '',                 -- 管理员回复
   isPublic    INTEGER DEFAULT 0                   -- D1无boolean：0=不公开 false；1=公开 true
 );
+
+-- 重要说明（用户端反馈窗口顶部展示，管理员可实时编辑）
+CREATE TABLE IF NOT EXISTS notice (
+  id          INTEGER PRIMARY KEY,                -- 固定单行 id=1
+  content     TEXT    NOT NULL DEFAULT '',        -- 说明内容（多行文本）
+  updatedAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- 更新时间
+);

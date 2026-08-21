@@ -71,6 +71,16 @@
   .fb-switch input:checked + .track::after { left: 19px; }
 
   .fb-empty { text-align: center; color: #94a3b8; font-size: 13px; padding: 40px 0; }
+  /* 重要说明编辑器 */
+  .fb-notice-editor { border: 1px dashed #c4b5fd; background: #faf8ff; border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; }
+  .fb-ne-title { font-size: 12.5px; font-weight: 700; color: #4c1d95; margin-bottom: 8px; }
+  .fb-ne-hint { font-size: 11.5px; color: #94a3b8; margin-top: 6px; min-height: 16px; display: block; }
+  .fb-ne-hint.ok { color: #15803d; }
+  .fb-notice-editor textarea {
+    width: 100%; box-sizing: border-box; border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 8px 10px; font-size: 12.5px; font-family: inherit; line-height: 1.6; resize: vertical;
+  }
+  .fb-notice-editor textarea:focus { outline: none; border-color: var(--purple-2); box-shadow: 0 0 0 3px rgba(124,58,237,0.15); }
 
   .fb-footer { text-align: center; color: #94a3b8; font-size: 12px; padding: 10px 0 30px; }
 
@@ -125,6 +135,13 @@
     <span class="fb-count" id="fbCount">加载中…</span>
     <button class="fb-refresh" id="fbRefresh">刷新列表</button>
   </div>
+  <!-- 重要说明编辑器：保存后用户端反馈窗口 3 秒内实时同步 -->
+  <div class="fb-notice-editor">
+    <div class="fb-ne-title">重要说明（用户端反馈窗口顶部展示 · 保存后 3 秒内实时同步）</div>
+    <textarea id="fbNoticeInput" rows="4" maxlength="500" placeholder="输入反馈窗口顶部显示的重要说明，留空则不显示"></textarea>
+    <button class="btn btn-save" id="fbNoticeSave" style="margin-top:8px;">保存重要说明</button>
+    <span class="fb-ne-hint" id="fbNoticeHint"></span>
+  </div>
   <div id="fbList"></div>
   <div class="fb-footer">所有反馈存储于云端数据库，任意设备均可查看，数据永久保存。</div>
 </div>
@@ -151,13 +168,50 @@ var gateOverlay = document.getElementById("gateOverlay");
 var gateKeyInput = document.getElementById("gateKey");
 var gateErr = document.getElementById("gateErr");
 var mainArea = document.getElementById("mainArea");
+var noticeInput = document.getElementById("fbNoticeInput");
+var noticeHint = document.getElementById("fbNoticeHint");
 
 /* 统一的请求封装：自动携带 Authorization: Bearer {key} */
 function apiFetch(url, options) {
   options = options || {};
   options.headers = Object.assign({}, options.headers || {});
   if (authKey) options.headers["Authorization"] = "Bearer " + authKey;
-  return fetch(API + url, options);
+  // url 以 / 开头视为绝对路径（如 /api/notice），否则拼上反馈接口前缀
+  return fetch(url.charAt(0) === "/" ? url : API + url, options);
+}
+
+/* 载入当前重要说明到编辑器（GET /api/notice，公开接口） */
+function loadNotice() {
+  fetch("/api/notice")
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d && d.ok && typeof d.content === "string") noticeInput.value = d.content;
+    })
+    .catch(function () { /* 网络异常忽略，保持原值 */ });
+}
+
+/* 保存重要说明（PUT /api/notice，Bearer 鉴权；用户端 3 秒内实时同步） */
+function saveNotice() {
+  var content = noticeInput.value;
+  if (content.length > 500) { setNoticeHint("内容过长（上限500字）", false); return; }
+  apiFetch("/notice", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content: content })
+  })
+    .then(function (r) { if (r.status === 401) throw { code: 401 }; return r.json(); })
+    .then(function (d) {
+      if (!d.ok) { setNoticeHint("保存失败：" + ((d && d.error) || "未知错误"), false); return; }
+      setNoticeHint("已保存，用户端反馈窗口将在 3 秒内实时更新", true);
+    })
+    .catch(function (e) {
+      setNoticeHint(e && e.code === 401 ? "未授权（401）：密钥错误" : "网络异常，保存失败", false);
+    });
+}
+
+function setNoticeHint(msg, ok) {
+  noticeHint.textContent = msg;
+  noticeHint.className = "fb-ne-hint" + (ok ? " ok" : "");
 }
 
 /* 格式化 D1 时间（CURRENT_TIMESTAMP 为 UTC "YYYY-MM-DD HH:MM:SS"，转本地可读） */
@@ -287,6 +341,7 @@ function tryEnter() {
       gateOverlay.style.display = "none";
       mainArea.style.display = "block";
       renderAll(d);
+      loadNotice();
     })
     .catch(function (e) {
       gateErr.textContent = e && e.code === 401 ? "密钥错误（401），请检查 ADMIN_API_KEY" : "网络异常，无法连接后端";
@@ -304,6 +359,7 @@ function renderAll(d) {
 document.getElementById("gateEnter").addEventListener("click", tryEnter);
 gateKeyInput.addEventListener("keydown", function (e) { if (e.key === "Enter") tryEnter(); });
 document.getElementById("fbRefresh").addEventListener("click", function () { loadAll(); });
+document.getElementById("fbNoticeSave").addEventListener("click", saveNotice);
 
 // 常量中若配置了默认密钥，预填输入框
 if (ADMIN_KEY) gateKeyInput.value = ADMIN_KEY;
