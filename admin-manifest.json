@@ -1,8 +1,8 @@
 {
   "name": "佛山大学课表 · 反馈管理后台",
   "short_name": "反馈管理",
-  "id": "/admin.html",
-  "start_url": "/admin.html",
+  "id": "/admin",
+  "start_url": "/admin",
   "scope": "/",
   "display": "standalone",
   "theme_color": "#6d28d9",
