@@ -1700,7 +1700,7 @@ loadSchedule();
   function saveNotice() {
     var content = noticeInput.value;
     if (content.length > 500) { setNoticeHint("内容过长（上限500字）", false); return; }
-    apiFetch("/notice", {
+    apiFetch("/api/notice", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: content })
@@ -1724,8 +1724,8 @@ loadSchedule();
     options = options || {};
     options.headers = Object.assign({}, options.headers || {});
     if (authKey) options.headers["Authorization"] = "Bearer " + authKey;
-    // url 以 / 开头视为绝对路径（如 /api/notice），否则拼上反馈接口前缀
-    return fetch(url.charAt(0) === "/" ? url : API + url, options);
+    // 仅当 url 以 /api/ 开头视为完整路径（如 /api/notice），否则拼上反馈接口前缀 /api/feedback
+    return fetch(url.indexOf("/api/") === 0 ? url : API + url, options);
   }
 
   function fmtTime(s) {
