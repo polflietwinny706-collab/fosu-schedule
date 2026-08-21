@@ -1854,14 +1854,20 @@ loadSchedule();
   // 注册管理员端 Service Worker 并订阅推送（role=admin），用于接收新反馈通知
   if (window.initPush) { try { window.initPush("/admin-sw.js", "admin"); } catch (e) {} }
 
-  // 安装提示（Edge/Chrome 的 beforeinstallprompt）：可安装时显示"安装应用"按钮
+  // 安装提示（Edge/Chrome 的 beforeinstallprompt）：可安装时显示"安装应用"按钮。
+  // 如果已经在独立窗口运行（已安装为 PWA），就完全不显示按钮——否则点了没反应。
+  var isStandalone =
+    window.matchMedia && window.matchMedia("(display-mode: standalone)").matches ||
+    !!window.navigator.standalone; // iOS Safari
   var deferredPrompt = null;
-  window.addEventListener("beforeinstallprompt", function (e) {
-    e.preventDefault();
-    deferredPrompt = e;
-    var btn = document.getElementById("installBtn");
-    if (btn) btn.style.display = "block";
-  });
+  if (!isStandalone) {
+    window.addEventListener("beforeinstallprompt", function (e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      var btn = document.getElementById("installBtn");
+      if (btn) btn.style.display = "block";
+    });
+  }
   document.getElementById("installBtn").addEventListener("click", function () {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
