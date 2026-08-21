@@ -4,6 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>佛山大学 26级数学 研究生周课表（第2-18周）</title>
+<!-- ===== 新增：PWA 安装与独立应用支持（仅增量引入，不改原有课表逻辑） ===== -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#2b6cb0" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="FSU课表" />
 <style>
   :root {
     --bg: #f5f7fb;
@@ -128,6 +135,40 @@
   .course .name { font-weight: 700; font-size: 12.5px; margin-bottom: 3px; }
   .course .loc, .course .teacher { font-size: 11px; opacity: 0.95; }
   .course .tap-hint { font-size: 9.5px; opacity: 0.7; margin-top: 2px; }
+
+  /* ===== 新增：今日实时课程高亮（正在上课 / 即将上课） =====
+     仅作用于"今天星期"那一列（今日列由 JS 动态计算，见 TODAY_DAY_IDX），其余列完全不变。
+     高亮用 box-shadow 描边 + 动画实现，不占用布局空间；状态徽标为卡片内嵌第一行，
+     flex 纵向排列向下推开，不缩小/挤压原有的课程名、教室、老师文本。 */
+  .course { position: relative; } /* 为状态徽标留出定位上下文（此处仅作语义说明，徽标用 flex 内嵌） */
+  .course .status-badge {
+    align-self: flex-start;       /* 顶部左对齐，不撑满整行 */
+    margin-bottom: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px; font-weight: 700; line-height: 1.4;
+    color: #fff;
+    background: rgba(255,255,255,0.22);
+    border: 1px solid rgba(255,255,255,0.55);
+    white-space: nowrap;
+  }
+  /* 正在上课：高光高亮 + 呼吸光环（叠加在原有渐变背景之上，不影响布局） */
+  .course.status-studying {
+    box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--primary), 0 8px 22px rgba(37,99,235,0.45);
+    animation: studyPulse 1.8s ease-in-out infinite;
+    z-index: 2;
+  }
+  .course.status-studying .status-badge { background: #16a34a; border-color: #fff; }
+  /* 即将上课：橙色描边提醒（不影响布局） */
+  .course.status-comingSoon {
+    box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--accent), 0 8px 20px rgba(249,115,22,0.35);
+    z-index: 1;
+  }
+  .course.status-comingSoon .status-badge { background: var(--accent); border-color: #fff; }
+  @keyframes studyPulse {
+    0%,100% { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--primary), 0 8px 22px rgba(37,99,235,0.45); }
+    50%     { box-shadow: 0 0 0 3px #fff, 0 0 0 9px rgba(37,99,235,0.55), 0 10px 26px rgba(37,99,235,0.55); }
+  }
 
   .c1 { background: linear-gradient(135deg, #3b82f6, #2563eb); }
   .c2 { background: linear-gradient(135deg, #f59e0b, #ea580c); }
@@ -539,6 +580,64 @@ const TIME_SLOTS = {
   14: { start: "20:50", end: "21:30" }
 };
 
+/* ===== 新增：今日实时课程状态判定（正在上课 / 即将上课） =====
+   严格遵循需求：
+   1) 只在页面加载时计算一次（见底部 TODAY_STATUS / TODAY_DAY_IDX 初始化），轮询同步与切周都不再重算；
+      只有用户手动刷新网页才会重新计算（不在 render / loadSchedule 内重算）。
+   2) 仅对"浏览器本地今天星期"那一列生效，其它星期列完全不变（在 render 中按今日列索引过滤）。
+   3) 仅当本地时间在 7:00–21:30 窗口内才执行状态判断，窗口外全部课程维持普通样式。
+   4) 全部只用浏览器原生 Date API，禁止引入 moment / dayjs 等第三方时间库。
+   状态取值：'' （普通）/ 'studying' （正在上课）/ 'comingSoon' （即将上课）。 */
+
+/* 时间工具：把 "HH:MM" 解析为「当天从 00:00 算起的分钟数」，便于区间比较 */
+function hhmmToMinutes(hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+}
+
+/* 时间窗口判断：本地时间是否落在 7:00 ~ 21:30（含 7:00，不含 21:30） */
+function inActiveWindow(now) {
+  const mins = now.getHours() * 60 + now.getMinutes();
+  return mins >= 7 * 60 && mins < 21 * 60 + 30; // 420 <= mins < 1290
+}
+
+/* 计算今日各节次(period)的课程状态，返回 { 节次: 状态 } 映射。
+   - studying（正在上课）：当前时间在节次 [start, end) 区间内；
+   - comingSoon（即将上课）：当前时间落在「上一节次的结束时间」到「本节次开始时间」的课间窗口
+     （即 [end(prevPeriod), start(thisPeriod))，例如第3节 10:20 下课 → 第4节 10:25 上课的间隙；
+      这段时间归到第4节，提示"即将上课"）。
+   返回空对象 {} 表示不在活跃窗口（7:00–21:30 之外）或无需高亮，全部课程维持普通样式。 */
+function computeTodayStatus() {
+  const now = new Date();
+  if (!inActiveWindow(now)) return {};            // 窗口外：全部普通样式，不产生任何高亮
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const statusByPeriod = {};
+  // 配置驱动：遍历 TIME_SLOTS 各节次（按节次号升序），用相邻节次推导课间窗口，无需写死星期/节次
+  const periods = Object.keys(TIME_SLOTS).map(Number).sort((a, b) => a - b);
+  for (let i = 0; i < periods.length; i++) {
+    const p = periods[i];
+    const { start, end } = TIME_SLOTS[p];
+    const sM = hhmmToMinutes(start);
+    const eM = hhmmToMinutes(end);
+    if (nowMins >= sM && nowMins < eM) {
+      statusByPeriod[p] = "studying";             // 区间内 = 正在上课
+    } else if (i > 0) {
+      const prevEnd = hhmmToMinutes(TIME_SLOTS[periods[i - 1]].end);
+      if (nowMins >= prevEnd && nowMins < sM) {
+        statusByPeriod[p] = "comingSoon";         // 上一节结束 → 本节开始 的课间 = 即将上课
+      }
+    }
+  }
+  return statusByPeriod;
+}
+
+/* 今日星期列索引：由浏览器本地 Date 动态推导，与 DAYS([周一…周日]) 顺序一一对应。
+   公式 (getDay()+6)%7：JS getDay() 0=周日,1=周一…6=周六；映射后 0=周一…6=周日。
+   全程动态计算，不写死任何星期数字。 */
+function getTodayDayIndex() {
+  return (new Date().getDay() + 6) % 7;
+}
+
 /* ===== 公共课/选修课标记与本地隐藏（仅本机 localStorage，不与后端同步） =====
    pub=true 为公共课（不可隐藏，始终显示）；pub=false 为选修课（普通用户可本机隐藏）。
    旧数据无 pub 字段时，按默认公共课列表（政治+英语）补全。 */
@@ -594,7 +693,8 @@ function buildWeek(week) {
           course: c,
           loc: s.loc,
           teacher: c.teacher,
-          slotNum: slotNum
+          slotNum: slotNum,
+          currentStatus: "" // 新增：实时状态标记，取值 '' / 'studying' / 'comingSoon'（仅今日列在 render 中赋值）
         });
       });
     });
@@ -739,7 +839,10 @@ function render() {
     grid.appendChild(cellT);
 
     // 周一~周日
+    // 仅"今天星期"那一列才执行实时状态判断；其余列一律普通样式，绝不出现高亮
     for (let d = 0; d < 7; d++) {
+      // 当前列是否等于"今天星期"列：一次性计算的 TODAY_DAY_IDX（由浏览器本地 Date 推导）
+      const isTodayCol = (d === TODAY_DAY_IDX);
       const items = schedule[ri][d];
       const cell = document.createElement("div");
       if (items.length === 0) {
@@ -753,7 +856,14 @@ function render() {
         items.forEach(it => {
           const c = document.createElement("div");
           c.className = "course " + it.course.cls;
+          // 仅今日列：按节次从一次性计算的 TODAY_STATUS 映射取状态；其余列清空为普通样式
+          it.currentStatus = isTodayCol ? (TODAY_STATUS[it.slotNum] || "") : "";
+          if (it.currentStatus) c.classList.add("status-" + it.currentStatus); // status-studying / status-comingSoon
+          const badgeText =
+            it.currentStatus === "studying" ? "正在上课" :
+            it.currentStatus === "comingSoon" ? "即将上课" : "";
           c.innerHTML = `
+            ${badgeText ? `<div class="status-badge">${badgeText}</div>` : ""}
             <div class="name">${it.course.name}</div>
             <div class="loc">${it.loc}</div>
             <div class="teacher">${it.teacher} 老师</div>
@@ -859,9 +969,19 @@ async function loadSchedule() {
   } catch (e) { /* 服务器未启动或本地 file:// 打开时，使用内置默认数据 */ }
 }
 
+/* ===== 今日实时课程状态：页面加载时【只计算一次】 =====
+   TODAY_DAY_IDX：今天对应的星期列索引（0=周一…6=周日），由浏览器本地 Date 动态推导。
+   TODAY_STATUS：各节次→状态 映射，仅在 7:00–21:30 窗口内才有内容，否则为 {}。
+   这两个变量在加载时确定后冻结；render() / 3 秒轮询(loadSchedule) 都不会重算，
+   只有用户手动刷新网页才会重新执行本段、重新计算 —— 严格满足"仅加载时计算一次、不自动轮询刷新状态"。 */
+const TODAY_DAY_IDX = getTodayDayIndex();
+const TODAY_STATUS = computeTodayStatus();
+
 renderLegend();
 render();
 loadSchedule();
+/* 说明：下面这 3 秒轮询仅用于「管理员端改动后同步课表数据」，并不重算今日课程高亮状态；
+   今日状态已在上面冻结（TODAY_STATUS / TODAY_DAY_IDX），不会被轮询改写。 */
 setInterval(loadSchedule, 3000);
 
 /* ===== 隐藏课程管理（仅本机 localStorage，不与后端同步） ===== */
@@ -922,5 +1042,7 @@ function renderHideList() {
   });
 }
 </script>
+<!-- 新增：PWA 单实例 + 唤起自动刷新（仅特性检测，不影响原有课表逻辑） -->
+<script src="pwa.js"></script>
 </body>
 </html>
