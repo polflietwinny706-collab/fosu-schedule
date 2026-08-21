@@ -1,7 +1,7 @@
 // Cloudflare Pages Function: /api/notice
 // 管理端可实时编辑「用户端反馈窗口的重要说明」。
 //   GET /api/notice -> 公开读取说明内容（用户端弹窗显示，无需鉴权；表缺失/异常回退默认文案）
-//   PUT /api/notice -> 管理员更新说明内容（需 Authorization: Bearer {ADMIN_API_KEY}，UPSERT 单行 id=1）
+//   PUT /api/notice -> 管理员更新说明内容（需 Authorization: Bearer {ADMIN_KEY}，UPSERT 单行 id=1）
 // 实时同步：用户端弹窗打开期间每 3 秒轮询 GET /api/notice（与课表 3 秒同步同一模式）。
 
 const CORS_HEADERS = {
@@ -20,7 +20,7 @@ export const onRequestOptions = () =>
 function checkAuth(request, env) {
   const auth = request.headers.get("Authorization") || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  return token !== "" && token === (env.ADMIN_API_KEY || "");
+  return token !== "" && token === (env.ADMIN_KEY || "");
 }
 
 // GET /api/notice —— 公开读取

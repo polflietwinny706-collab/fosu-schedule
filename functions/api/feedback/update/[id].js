@@ -1,6 +1,6 @@
 // Cloudflare Pages Function: PUT /api/feedback/update/:id
 // 管理员使用：根据 id 更新反馈记录（管理员回复 adminReply / 公开状态 isPublic）。
-// 鉴权：Authorization: Bearer {ADMIN_API_KEY}（环境变量，非硬编码），不合法返回 401。
+// 鉴权：Authorization: Bearer {ADMIN_KEY}（环境变量，非硬编码），不合法返回 401。
 // 管理员填写回复后，后台（waitUntil）给提交该反馈的用户设备推系统通知。
 
 import { sendPush } from "../../push/webpush.js";
@@ -17,7 +17,7 @@ export const onRequestOptions = () =>
 function checkAuth(request, env) {
   const auth = request.headers.get("Authorization") || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  return token !== "" && token === (env.ADMIN_API_KEY || "");
+  return token !== "" && token === (env.ADMIN_KEY || "");
 }
 
 export async function onRequestPut(context) {

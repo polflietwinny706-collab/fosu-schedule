@@ -1,6 +1,6 @@
 // Cloudflare Pages Function: DELETE /api/feedback/delete/:id
 // 管理员使用：根据 id 删除反馈条目。
-// 鉴权：Authorization: Bearer {ADMIN_API_KEY}（环境变量，非硬编码），不合法返回 401。
+// 鉴权：Authorization: Bearer {ADMIN_KEY}（环境变量，非硬编码），不合法返回 401。
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -14,7 +14,7 @@ export const onRequestOptions = () =>
 function checkAuth(request, env) {
   const auth = request.headers.get("Authorization") || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  return token !== "" && token === (env.ADMIN_API_KEY || "");
+  return token !== "" && token === (env.ADMIN_KEY || "");
 }
 
 export async function onRequestDelete(context) {

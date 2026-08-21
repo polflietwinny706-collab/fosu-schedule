@@ -2,8 +2,8 @@
 // 管理员页面使用：返回 D1 中全部反馈（无论 isPublic）。
 //
 // ⚠️ 安全风险注释：
-//   此接口返回全部反馈数据（含未公开内容），当前通过 Authorization: Bearer {ADMIN_API_KEY} 鉴权。
-//   密钥来自 Pages 项目环境变量 ADMIN_API_KEY，未硬编码。若环境变量未配置或密钥不匹配，返回 401。
+//   此接口返回全部反馈数据（含未公开内容），当前通过 Authorization: Bearer {ADMIN_KEY} 鉴权。
+//   密钥来自 Pages 项目环境变量 ADMIN_KEY，未硬编码。若环境变量未配置或密钥不匹配，返回 401。
 //   建议：密钥使用随机长字符串；若担心泄露，可进一步限制只允许管理员来源 IP / 增加请求频率限制。
 
 const CORS_HEADERS = {
@@ -15,11 +15,11 @@ const CORS_HEADERS = {
 export const onRequestOptions = () =>
   new Response(null, { status: 204, headers: CORS_HEADERS });
 
-// 校验请求头 Authorization: Bearer {ADMIN_API_KEY}（密钥存于 Pages 环境变量，不在代码中）
+// 校验请求头 Authorization: Bearer {ADMIN_KEY}（密钥存于 Pages 环境变量，不在代码中）
 function checkAuth(request, env) {
   const auth = request.headers.get("Authorization") || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  return token !== "" && token === (env.ADMIN_API_KEY || "");
+  return token !== "" && token === (env.ADMIN_KEY || "");
 }
 
 export async function onRequestGet(context) {
