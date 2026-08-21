@@ -207,9 +207,23 @@
   .footer { text-align: center; color: var(--ink-3); font-size: 12px; margin-top: 24px; }
   .day-header .date-tag { font-size: 10px; font-weight: 400; opacity: 0.75; margin-top: 2px; }
 
-  /* ===== 隐藏课程按钮（右上角浮动） ===== */
-  .hide-toggle {
+  /* ===== 右上角浮动操作区（反馈问号 + 隐藏课程，等高对齐） ===== */
+  .top-actions {
     position: fixed; top: 16px; right: 16px; z-index: 900;
+    display: flex; align-items: center; gap: 8px;
+  }
+  /* 圆形问号反馈按钮：紫色主题，与隐藏课程按钮等高 */
+  .feedback-fab {
+    border: none; border-radius: 999px; width: 40px; height: 40px;
+    font-size: 19px; font-weight: 700; line-height: 1; cursor: pointer;
+    background: #6d28d9; color: #fff;
+    box-shadow: 0 6px 20px rgba(109, 40, 217, 0.35);
+    transition: all 0.2s ease; display: flex; align-items: center; justify-content: center;
+    font-family: inherit;
+  }
+  .feedback-fab:hover { background: #7c3aed; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(109, 40, 217, 0.45); }
+  .feedback-fab:active { transform: translateY(0); }
+  .hide-toggle {
     border: none; border-radius: 999px; padding: 10px 18px;
     font-size: 13px; font-weight: 600; cursor: pointer;
     background: rgba(255,255,255,0.95); color: #1e3a8a;
@@ -217,6 +231,71 @@
     transition: all 0.2s ease; letter-spacing: 0.02em;
   }
   .hide-toggle:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.22); }
+
+  /* ===== 反馈弹窗（课程表反馈） ===== */
+  .fb-overlay {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1100; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease; padding: 18px;
+  }
+  .fb-overlay.show { opacity: 1; pointer-events: auto; }
+  .fb-card {
+    background: #fff; border-radius: 18px; width: 100%; max-width: 440px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.3); overflow: hidden;
+    max-height: 88vh; display: flex; flex-direction: column;
+    transform: scale(0.94); transition: transform 0.2s ease;
+  }
+  .fb-overlay.show .fb-card { transform: scale(1); }
+  .fb-card .fb-head {
+    padding: 16px 18px; background: linear-gradient(135deg, #6d28d9, #7c3aed);
+    color: #fff; display: flex; align-items: center; justify-content: space-between;
+  }
+  .fb-card .fb-head h3 { margin: 0; font-size: 16px; font-weight: 700; }
+  .fb-card .fb-head .fb-close {
+    border: none; background: rgba(255,255,255,0.2); color: #fff;
+    width: 28px; height: 28px; border-radius: 999px; cursor: pointer; font-size: 16px;
+  }
+  .fb-card .fb-body { padding: 16px 18px; overflow-y: auto; }
+  .fb-card textarea {
+    width: 100%; min-height: 96px; resize: vertical; box-sizing: border-box;
+    border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px;
+    font-size: 14px; font-family: inherit; color: #1e293b; line-height: 1.5;
+  }
+  .fb-card textarea:focus { outline: none; border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.15); }
+  .fb-note {
+    margin: 12px 0 0; padding: 10px 12px; background: #f5f3ff; border-radius: 10px;
+    font-size: 12px; line-height: 1.7; color: #5b21b6;
+  }
+  .fb-note b { color: #4c1d95; }
+  .fb-public-title { margin: 16px 0 8px; font-size: 13px; font-weight: 700; color: #4c1d95; }
+  .fb-public-list { display: flex; flex-direction: column; gap: 10px; }
+  .fb-public-item {
+    border: 1px solid #ede9fe; border-radius: 10px; padding: 10px 12px; background: #faf8ff;
+  }
+  .fb-public-item .fb-q { font-size: 13px; color: #1e293b; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .fb-public-item .fb-a { margin-top: 6px; font-size: 12.5px; color: #15803d; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .fb-public-item .fb-a::before { content: "管理员回复："; color: #166534; font-weight: 600; }
+  .fb-empty { font-size: 12.5px; color: #94a3b8; padding: 6px 2px; }
+  .fb-card .fb-foot {
+    padding: 14px 18px; border-top: 1px solid #f1f5f9; display: flex; gap: 10px; justify-content: flex-end;
+  }
+  .fb-card .fb-foot button {
+    border: none; border-radius: 999px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .fb-btn-close { background: #f1f5f9; color: #475569; }
+  .fb-btn-close:hover { background: #e2e8f0; }
+  .fb-btn-submit { background: #6d28d9; color: #fff; }
+  .fb-btn-submit:hover { background: #7c3aed; }
+  /* Toast 提示 */
+  .fb-toast {
+    position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%) translateY(20px);
+    background: rgba(15, 23, 42, 0.92); color: #fff; padding: 11px 20px; border-radius: 999px;
+    font-size: 13.5px; z-index: 1200; opacity: 0; pointer-events: none; transition: all 0.25s ease;
+  }
+  .fb-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   /* ===== 隐藏课程管理面板 ===== */
   .hide-overlay {
@@ -385,7 +464,10 @@
 </style>
 </head>
 <body>
-  <button class="hide-toggle" id="hideToggle" title="管理本机隐藏的课程">◐ 隐藏课程</button>
+  <div class="top-actions">
+    <button class="feedback-fab" id="feedbackFab" title="课程表反馈">?</button>
+    <button class="hide-toggle" id="hideToggle" title="管理本机隐藏的课程">◐ 隐藏课程</button>
+  </div>
 
   <header class="header">
     <div class="header-inner">
@@ -474,6 +556,34 @@
       </div>
     </div>
   </div>
+
+  <!-- 课程表反馈弹窗（点击右上角 ? 打开） -->
+  <div class="fb-overlay" id="fbOverlay">
+    <div class="fb-card">
+      <div class="fb-head">
+        <h3>课程表反馈</h3>
+        <button class="fb-close" id="fbClose" title="关闭">×</button>
+      </div>
+      <div class="fb-body">
+        <textarea id="fbText" placeholder="请写下 bug、问题或者课程相关建议"></textarea>
+        <div class="fb-note">
+          <b>重要说明：</b><br>
+          1. 本课程表仅供参考，请以学校教务系统课表为准。<br>
+          2. 反馈不会即时回复，管理员定期查看。<br>
+          3. 请勿提交身份证、手机号等隐私信息。
+        </div>
+        <div class="fb-public-title">公开问答</div>
+        <div class="fb-public-list" id="fbPublicList"></div>
+      </div>
+      <div class="fb-foot">
+        <button class="fb-btn-close" id="fbCancel">关闭</button>
+        <button class="fb-btn-submit" id="fbSubmit">提交反馈</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 提示 -->
+  <div class="fb-toast" id="fbToast"></div>
 
 <script>
 /* ===== 课程默认数据（内置兜底；正常运行时由服务器 /api/schedule 提供，管理员端修改后自动同步） =====
@@ -1044,5 +1154,91 @@ function renderHideList() {
 </script>
 <!-- 新增：PWA 单实例 + 唤起自动刷新（仅特性检测，不影响原有课表逻辑） -->
 <script src="pwa.js"></script>
+
+<script>
+/* ===== 课程表反馈模块（独立叠加，不改动原有课表/隐藏课程/高光/PWA 逻辑） =====
+   后端：Cloudflare Pages Functions，接口前缀 /api/feedback/*。
+   Pages Functions 与网页同一域名，直接使用相对路径，无需填写外部域名。
+   （若日后前后端分离部署，把下方 API 常量改为完整后端地址即可） */
+(function () {
+  var API = "/api/feedback"; // 反馈接口前缀（同一域名，相对路径即可）
+  var overlay = document.getElementById("fbOverlay");
+  var textarea = document.getElementById("fbText");
+  var listEl = document.getElementById("fbPublicList");
+  var toastEl = document.getElementById("fbToast");
+  var toastTimer = null;
+
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 2600);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  // 打开弹窗时自动 GET 公开反馈（isPublic=1），渲染用户原文 + 管理员回复
+  function loadPublic() {
+    listEl.innerHTML = '<div class="fb-empty">加载中…</div>';
+    fetch(API + "/public")
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var list = (d && d.list) || [];
+        listEl.innerHTML = "";
+        if (!list.length) {
+          listEl.innerHTML = '<div class="fb-empty">暂无公开反馈</div>';
+          return;
+        }
+        list.forEach(function (it) {
+          var item = document.createElement("div");
+          item.className = "fb-public-item";
+          item.innerHTML =
+            '<div class="fb-q">' + escapeHtml(it.content) + '</div>' +
+            (it.adminReply ? '<div class="fb-a">' + escapeHtml(it.adminReply) + '</div>' : "");
+          listEl.appendChild(item);
+        });
+      })
+      .catch(function () {
+        listEl.innerHTML = '<div class="fb-empty">公开反馈加载失败，请检查网络</div>';
+      });
+  }
+
+  // 提交反馈：校验非空 → POST /api/feedback/add → 成功 toast + 自动关闭
+  function submitFeedback() {
+    var content = textarea.value.trim();
+    if (!content) { showToast("反馈内容不能为空"); return; }
+    fetch(API + "/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: content })
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.d.ok) {
+          showToast((res.d && res.d.error) || "提交失败，请稍后重试");
+          return;
+        }
+        showToast("反馈提交成功，感谢反馈");
+        textarea.value = "";
+        overlay.classList.remove("show");
+      })
+      .catch(function () { showToast("网络异常，请检查网络后重试"); });
+  }
+
+  function openModal() { overlay.classList.add("show"); loadPublic(); }
+  function closeModal() { overlay.classList.remove("show"); }
+
+  document.getElementById("feedbackFab").addEventListener("click", openModal);
+  document.getElementById("fbClose").addEventListener("click", closeModal);
+  document.getElementById("fbCancel").addEventListener("click", closeModal);
+  // 点击半透明遮罩关闭弹窗
+  overlay.addEventListener("click", function (e) { if (e.target === overlay) closeModal(); });
+  document.getElementById("fbSubmit").addEventListener("click", submitFeedback);
+})();
+</script>
 </body>
 </html>
