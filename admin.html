@@ -400,10 +400,78 @@
     .detail-card, .modal-card { max-width: 100%; }
     .detail-banner, .detail-body { padding-left: 20px; padding-right: 20px; }
   }
+
+  /* ===== 反馈管理（右上角入口按钮 + 弹窗，集成自 admin-feedback.html） ===== */
+  .fb-enter {
+    position: fixed; top: 16px; right: 16px; z-index: 1200;
+    border: none; border-radius: 999px; padding: 11px 20px;
+    font-size: 13.5px; font-weight: 700; cursor: pointer;
+    background: #6d28d9; color: #fff;
+    box-shadow: 0 6px 20px rgba(109, 40, 217, 0.4);
+    transition: all 0.2s ease; letter-spacing: 0.02em;
+  }
+  .fb-enter:hover { background: #7c3aed; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(109,40,217,0.5); }
+  .fb-enter:active { transform: translateY(0); }
+
+  .modal-card.fb-card { max-width: 720px; }
+  .modal-head.fb-head {
+    background: linear-gradient(135deg, #6d28d9, #7c3aed);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .fb-head-x {
+    border: none; background: rgba(255,255,255,0.22); color: #fff; cursor: pointer;
+    width: 30px; height: 30px; border-radius: 999px; font-size: 16px; line-height: 1; flex: none;
+  }
+  .fb-head-x:hover { background: rgba(255,255,255,0.34); }
+  .fb-gate { text-align: center; padding: 8px 0 4px; }
+  .fb-gate p { margin: 0 0 12px; font-size: 13px; color: #475569; }
+  .fb-gate input {
+    width: 100%; max-width: 320px; box-sizing: border-box; border: 1px solid #e2e8f0; border-radius: 10px;
+    padding: 10px 12px; font-size: 14px; text-align: center; outline: none;
+  }
+  .fb-gate input:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.15); }
+  .fb-gate .btn { margin-top: 10px; width: 100%; max-width: 320px; }
+  .fb-gate-err { color: #dc2626; font-size: 12.5px; margin-top: 10px; min-height: 18px; }
+  .fb-count { font-size: 12.5px; color: #64748b; margin-bottom: 12px; }
+  .fb-item {
+    border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; background: #fff;
+  }
+  .fb-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: #64748b; margin-bottom: 8px; }
+  .fb-id { background: #f5f3ff; color: #6d28d9; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .fb-time { color: #94a3b8; }
+  .fb-pub-tag { font-size: 11px; padding: 2px 8px; border-radius: 999px; }
+  .fb-pub-tag.on { background: #dcfce7; color: #15803d; }
+  .fb-pub-tag.off { background: #f1f5f9; color: #64748b; }
+  .fb-content { font-size: 13.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; margin: 0 0 10px; color: #1e293b; }
+  .fb-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .fb-reply-input {
+    flex: 1; min-width: 180px; border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 8px 10px; font-size: 13px; font-family: inherit; outline: none;
+  }
+  .fb-reply-input:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.15); }
+  .fb-btn-save { background: #6d28d9; color: #fff; }
+  .fb-btn-save:hover { background: #7c3aed; }
+  .fb-btn-del { background: #fee2e2; color: #b91c1c; }
+  .fb-btn-del:hover { background: #fecaca; }
+  .fb-switch { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; cursor: pointer; }
+  .fb-switch input { display: none; }
+  .fb-switch .track { width: 38px; height: 21px; border-radius: 999px; background: #cbd5e1; position: relative; transition: background 0.2s; }
+  .fb-switch .track::after {
+    content: ""; position: absolute; top: 2.5px; left: 3px; width: 16px; height: 16px;
+    border-radius: 999px; background: #fff; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  }
+  .fb-switch input:checked + .track { background: #6d28d9; }
+  .fb-switch input:checked + .track::after { left: 19px; }
+  .fb-empty { text-align: center; color: #94a3b8; font-size: 13px; padding: 26px 0; }
+  @media (max-width: 640px) {
+    .fb-enter { padding: 9px 14px; font-size: 12.5px; }
+    .fb-reply-input { min-width: 100%; }
+  }
 </style>
 </head>
 <body>
   <button class="edit-toggle" id="editToggle" title="进入/退出课表编辑模式">✎ 编辑</button>
+  <button class="fb-enter" id="fbEnter" title="反馈管理（查看/回复/公开/删除）">💬 反馈管理</button>
 
   <header class="header">
     <div class="header-inner">
@@ -580,6 +648,34 @@
         <div class="modal-actions">
           <button class="btn ghost" id="keyCancel">取消</button>
           <button class="btn primary" id="keyOk">验证并继续</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 反馈管理弹窗（右上角「💬 反馈管理」入口，功能同 admin-feedback.html） -->
+  <div class="modal-overlay" id="fbOverlay">
+    <div class="modal-card fb-card">
+      <div class="modal-head fb-head">
+        <div>
+          <div class="mh-title">反馈管理</div>
+          <div class="mh-sub">数据存储于 Cloudflare D1 云端数据库 · 任意设备可见</div>
+        </div>
+        <button class="fb-head-x" id="fbHeadX" title="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <!-- 密钥门（仅简单前端拦截；真实鉴权在后端 Bearer，密钥为 Pages 环境变量 ADMIN_API_KEY） -->
+        <div class="fb-gate" id="fbGate">
+          <p>请输入反馈管理密钥（ADMIN_API_KEY）</p>
+          <input type="password" id="fbKeyInput" placeholder="管理员密钥" autocomplete="off">
+          <br>
+          <button class="btn primary" id="fbKeyEnter">进入</button>
+          <div class="fb-gate-err" id="fbGateErr"></div>
+        </div>
+        <!-- 反馈列表区（进入后显示） -->
+        <div id="fbListArea" style="display:none">
+          <div class="fb-count" id="fbCount">加载中…</div>
+          <div id="fbList"></div>
         </div>
       </div>
     </div>
@@ -1552,6 +1648,146 @@ wkNoteInputEl.addEventListener("blur", () => {
 renderLegend();
 render();
 loadSchedule();
+</script>
+<script>
+/* ===== 反馈管理模块（集成自 admin-feedback.html，独立 IIFE，不触碰上方课表管理逻辑） =====
+   后端：Cloudflare Pages Functions /api/feedback/*，同域相对路径。
+   ⚠️ 安全风险注释：此处常量密码仅做简单前端拦截；真实鉴权在接口层——
+   管理员接口要求 Authorization: Bearer {ADMIN_API_KEY}，密钥存于 Pages 环境变量 ADMIN_API_KEY。 */
+(function () {
+  var ADMIN_KEY = ""; // 可填默认密钥便于免输入；留空则每次手动输入（须与线上 ADMIN_API_KEY 一致）
+  var API = "/api/feedback";
+  var authKey = ADMIN_KEY;
+
+  var overlay = document.getElementById("fbOverlay");
+  var gate = document.getElementById("fbGate");
+  var listArea = document.getElementById("fbListArea");
+  var keyInput = document.getElementById("fbKeyInput");
+  var gateErr = document.getElementById("fbGateErr");
+  var listEl = document.getElementById("fbList");
+  var countEl = document.getElementById("fbCount");
+
+  function apiFetch(url, options) {
+    options = options || {};
+    options.headers = Object.assign({}, options.headers || {});
+    if (authKey) options.headers["Authorization"] = "Bearer " + authKey;
+    return fetch(API + url, options);
+  }
+
+  function fmtTime(s) {
+    if (!s) return "";
+    var d = new Date(String(s).replace(" ", "T") + "Z");
+    if (isNaN(d.getTime())) return String(s);
+    return d.toLocaleString("zh-CN", { hour12: false });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  /* 打开弹窗：未鉴权时聚焦密钥输入框 */
+  function openFb() {
+    overlay.classList.add("show");
+    if (!authKey) keyInput.focus();
+    else loadAll();
+  }
+  function closeFb() { overlay.classList.remove("show"); }
+
+  /* 加载全部反馈并渲染卡片（管理员接口，Bearer 鉴权） */
+  function loadAll() {
+    listEl.innerHTML = '<div class="fb-empty">加载中…</div>';
+    apiFetch("/all")
+      .then(function (r) { if (r.status === 401) throw { code: 401 }; return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) { listEl.innerHTML = '<div class="fb-empty">加载失败：' + escapeHtml((d && d.error) || "未知错误") + '</div>'; return; }
+        renderAll(d.list || []);
+      })
+      .catch(function (e) {
+        listEl.innerHTML = e && e.code === 401
+          ? '<div class="fb-empty">未授权（401）：密钥错误或服务端未配置 ADMIN_API_KEY</div>'
+          : '<div class="fb-empty">加载失败，请检查网络或后端服务</div>';
+      });
+  }
+
+  function renderAll(list) {
+    countEl.textContent = "共 " + list.length + " 条反馈";
+    listEl.innerHTML = "";
+    if (!list.length) { listEl.innerHTML = '<div class="fb-empty">暂无反馈</div>'; return; }
+    list.forEach(renderCard);
+  }
+
+  function renderCard(it) {
+    var card = document.createElement("div");
+    card.className = "fb-item";
+    var pubTag = it.isPublic ? '<span class="fb-pub-tag on">已公开</span>' : '<span class="fb-pub-tag off">未公开</span>';
+    card.innerHTML =
+      '<div class="fb-meta">' +
+        '<span class="fb-id">ID ' + it.id + '</span>' +
+        '<span class="fb-time">' + fmtTime(it.createTime) + '</span>' + pubTag +
+      '</div>' +
+      '<div class="fb-content">' + escapeHtml(it.content) + '</div>' +
+      '<div class="fb-row">' +
+        '<input class="fb-reply-input" type="text" placeholder="填写管理员回复…" value="' + escapeHtml(it.adminReply || "") + '">' +
+        '<button class="btn fb-btn-save">保存回复</button>' +
+        '<label class="fb-switch"><input type="checkbox" ' + (it.isPublic ? "checked" : "") + '><span class="track"></span>公开</label>' +
+        '<button class="btn fb-btn-del">删除本条反馈</button>' +
+      '</div>';
+
+    card.querySelector(".fb-btn-save").addEventListener("click", function () {
+      var reply = card.querySelector(".fb-reply-input").value;
+      apiFetch("/update/" + it.id, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ adminReply: reply }) })
+        .then(function (r) { if (r.status === 401) throw { code: 401 }; return r.json(); })
+        .then(function (d) { if (!d.ok) { alert("保存失败：" + (d.error || "")); return; } loadAll(); })
+        .catch(function (e) { alert(e && e.code === 401 ? "未授权（401）：密钥错误" : "网络异常，保存失败"); });
+    });
+
+    card.querySelector(".fb-switch input").addEventListener("change", function (e) {
+      var isPublic = e.target.checked ? 1 : 0;
+      apiFetch("/update/" + it.id, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isPublic: isPublic }) })
+        .then(function (r) { if (r.status === 401) throw { code: 401 }; return r.json(); })
+        .then(function (d) { if (!d.ok) { alert("更新失败：" + (d.error || "")); loadAll(); return; } loadAll(); })
+        .catch(function (e) { alert(e && e.code === 401 ? "未授权（401）：密钥错误" : "网络异常，更新失败"); });
+    });
+
+    card.querySelector(".fb-btn-del").addEventListener("click", function () {
+      if (!confirm("确定删除反馈 #" + it.id + " 吗？此操作不可恢复！")) return;
+      apiFetch("/delete/" + it.id, { method: "DELETE" })
+        .then(function (r) { if (r.status === 401) throw { code: 401 }; return r.json(); })
+        .then(function (d) { if (!d.ok) { alert("删除失败：" + (d.error || "")); return; } loadAll(); })
+        .catch(function (e) { alert(e && e.code === 401 ? "未授权（401）：密钥错误" : "网络异常，删除失败"); });
+    });
+
+    listEl.appendChild(card);
+  }
+
+  /* 密钥门：输入值作为 Bearer 发往后端校验 */
+  function tryEnter() {
+    var v = keyInput.value.trim();
+    if (!v) { gateErr.textContent = "请输入管理员密钥"; return; }
+    authKey = v;
+    gateErr.textContent = "";
+    apiFetch("/all")
+      .then(function (r) { if (r.status === 401) throw { code: 401 }; return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) { gateErr.textContent = "进入失败：" + ((d && d.error) || "未知错误"); return; }
+        gate.style.display = "none";
+        listArea.style.display = "block";
+        renderAll(d.list || []);
+      })
+      .catch(function (e) {
+        gateErr.textContent = e && e.code === 401 ? "密钥错误（401），请检查 ADMIN_API_KEY" : "网络异常，无法连接后端";
+      });
+  }
+
+  document.getElementById("fbEnter").addEventListener("click", openFb);
+  document.getElementById("fbHeadX").addEventListener("click", closeFb);
+  overlay.addEventListener("click", function (e) { if (e.target === overlay) closeFb(); });
+  document.getElementById("fbKeyEnter").addEventListener("click", tryEnter);
+  keyInput.addEventListener("keydown", function (e) { if (e.key === "Enter") tryEnter(); });
+  if (ADMIN_KEY) keyInput.value = ADMIN_KEY;
+})();
 </script>
 </body>
 </html>
