@@ -1,6 +1,9 @@
 // Cloudflare Pages Function: PUT /api/feedback/update/:id
 // 管理员使用：根据 id 更新反馈记录（管理员回复 adminReply / 公开状态 isPublic）。
 // 鉴权：Authorization: Bearer {ADMIN_API_KEY}（环境变量，非硬编码），不合法返回 401。
+// 管理员填写回复后，后台（waitUntil）给提交该反馈的用户设备推系统通知。
+
+import { sendPush } from "../../push/webpush.js";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -59,9 +62,38 @@ export async function onRequestPut(context) {
       return Response.json({ ok: false, error: "反馈不存在" },
         { status: 404, headers: CORS_HEADERS });
     }
+
+    // 管理员填写了回复 → 给提交该反馈的用户设备推系统通知
+    if (typeof adminReply === "string" && adminReply.trim() !== "") {
+      const row = await env.DB.prepare("SELECT deviceId FROM feedback WHERE id = ?").bind(id).first();
+      if (row && row.deviceId) {
+        context.waitUntil(notifyReply(env, row.deviceId, adminReply));
+      }
+    }
+
     return Response.json({ ok: true }, { status: 200, headers: CORS_HEADERS });
   } catch (e) {
     return Response.json({ ok: false, error: String((e && e.message) || e) },
       { status: 500, headers: CORS_HEADERS });
   }
 }
+
+// 给指定 deviceId 的用户设备发"有回复"通知
+async function notifyReply(env, deviceId, reply) {
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE deviceId = ? AND role = 'user'"
+    ).bind(deviceId).all();
+    const preview = reply.length > 60 ? reply.slice(0, 60) + "…" : reply;
+    await Promise.allSettled((results || []).map((s) =>
+      sendPush(
+        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+        { title: "💬 你的反馈有回复", body: preview, tag: "feedback-reply", url: "/user.html" },
+        env
+      )
+    ));
+  } catch (e) {
+    console.warn("[push] notifyReply 失败", String((e && e.message) || e));
+  }
+}
+

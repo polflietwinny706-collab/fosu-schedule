@@ -1151,6 +1151,7 @@ function renderHideList() {
 </script>
 <!-- 新增：PWA 单实例 + 唤起自动刷新（仅特性检测，不影响原有课表逻辑） -->
 <script src="pwa.js"></script>
+<script src="push.js"></script>
 
 <script>
 /* ===== 课程表反馈模块（独立叠加，不改动原有课表/隐藏课程/高光/PWA 逻辑） =====
@@ -1238,7 +1239,7 @@ function renderHideList() {
     fetch(API + "/add", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: content })
+      body: JSON.stringify({ content: content, deviceId: (window.getDeviceId ? window.getDeviceId() : "") })
     })
       .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
       .then(function (res) {
@@ -1272,6 +1273,9 @@ function renderHideList() {
   // 点击半透明遮罩关闭弹窗
   overlay.addEventListener("click", function (e) { if (e.target === overlay) closeModal(); });
   document.getElementById("fbSubmit").addEventListener("click", submitFeedback);
+
+  // 注册用户端 Service Worker 并订阅推送（role=user），用于接收管理员回复通知
+  if (window.initPush) { try { window.initPush("/user-sw.js", "user"); } catch (e) {} }
 })();
 </script>
 </body>

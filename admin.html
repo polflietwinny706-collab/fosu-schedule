@@ -4,6 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>佛山大学 26级数学 研究生周课表 · 管理员版（第2-18周）</title>
+<link rel="manifest" href="admin-manifest.json">
+<meta name="theme-color" content="#6d28d9">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="反馈管理">
 <style>
   :root {
     --bg: #f5f7fb;
@@ -482,6 +487,7 @@
 <body>
   <button class="edit-toggle" id="editToggle" title="进入/退出课表编辑模式">✎ 编辑</button>
   <button class="fb-enter" id="fbEnter" title="反馈管理（查看/回复/公开/删除）">💬 反馈管理</button>
+  <button class="fb-enter" id="installBtn" title="安装为本地应用（可离线访问）" style="top:64px;display:none;">📥 安装应用</button>
 
   <header class="header">
     <div class="header-inner">
@@ -1666,6 +1672,7 @@ renderLegend();
 render();
 loadSchedule();
 </script>
+<script src="push.js"></script>
 <script>
 /* ===== 反馈管理模块（集成自 admin-feedback.html，独立 IIFE，不触碰上方课表管理逻辑） =====
    后端：Cloudflare Pages Functions /api/feedback/*，同域相对路径。
@@ -1843,6 +1850,26 @@ loadSchedule();
   keyInput.addEventListener("keydown", function (e) { if (e.key === "Enter") tryEnter(); });
   document.getElementById("fbNoticeSave").addEventListener("click", saveNotice);
   if (ADMIN_KEY) keyInput.value = ADMIN_KEY;
+
+  // 注册管理员端 Service Worker 并订阅推送（role=admin），用于接收新反馈通知
+  if (window.initPush) { try { window.initPush("/admin-sw.js", "admin"); } catch (e) {} }
+
+  // 安装提示（Edge/Chrome 的 beforeinstallprompt）：可安装时显示"安装应用"按钮
+  var deferredPrompt = null;
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    var btn = document.getElementById("installBtn");
+    if (btn) btn.style.display = "block";
+  });
+  document.getElementById("installBtn").addEventListener("click", function () {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function () {
+      deferredPrompt = null;
+      document.getElementById("installBtn").style.display = "none";
+    });
+  });
 })();
 </script>
 </body>
