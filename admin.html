@@ -285,6 +285,30 @@
   .pub-toggle:hover { transform: translateY(-1px); }
   .legend-del { border: none; border-radius: 999px; padding: 5px 12px; font-size: 11.5px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all 0.15s; background: #fef2f2; color: #dc2626; }
   .legend-del:hover { background: #dc2626; color: #fff; transform: translateY(-1px); }
+  /* 修改课程按钮（管理员编辑模式下图例中显示） */
+  .legend-edit { border: none; border-radius: 999px; padding: 5px 12px; font-size: 11.5px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all 0.15s; background: #eef2ff; color: #4338ca; }
+  .legend-edit:hover { background: #4338ca; color: #fff; transform: translateY(-1px); }
+
+  /* 修改课程弹窗内的排课明细逐条编辑器 */
+  .se-head { display: flex; gap: 6px; font-size: 11px; color: var(--ink-3); font-weight: 600; margin: 4px 0 4px; }
+  .se-head .se-weeks { flex: 1.4; } .se-head .se-day { flex: 0 0 80px; } .se-head .se-slots { flex: 1.1; } .se-head .se-loc { flex: 1.4; } .se-head .se-x { flex: 0 0 30px; }
+  .slot-edit-row { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .slot-edit-row .se-weeks { flex: 1.4; }
+  .slot-edit-row .se-day { flex: 0 0 80px; }
+  .slot-edit-row .se-slots { flex: 1.1; }
+  .slot-edit-row .se-loc { flex: 1.4; }
+  .slot-edit-row input, .slot-edit-row select {
+    width: 100%; border: 1px solid var(--line); border-radius: 8px;
+    padding: 7px 8px; font-size: 12.5px; font-family: inherit; background: #fff; color: var(--ink);
+  }
+  .slot-edit-row input:focus, .slot-edit-row select:focus { border-color: var(--primary); }
+  .slot-edit-row .se-del {
+    flex: 0 0 auto; width: 30px; height: 32px; border: none; background: #fef2f2; color: #dc2626;
+    border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
+  .slot-edit-row .se-del:hover { background: #dc2626; color: #fff; }
+  .e-add-slot { margin-top: 4px; background: #f1f5f9; color: var(--primary); border: none; border-radius: 10px; padding: 8px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .e-add-slot:hover { background: #e2e8f0; }
 
   .empty-cell { color: var(--ink-3); font-size: 11.5px; }
   .footer { text-align: center; color: var(--ink-3); font-size: 12px; margin-top: 24px; }
@@ -636,6 +660,65 @@
         <div class="modal-actions">
           <button class="btn ghost" id="addCancel">取消</button>
           <button class="btn primary" id="addConfirm">添加</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 修改课程弹窗 -->
+  <div class="modal-overlay" id="editOverlay">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div class="mh-title">修改课程信息</div>
+        <div class="mh-sub">修改后，所有课表中该课程的教师 / 节次 / 学分 / 学时 / 教室 将自动同步</div>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <label>课程名称</label>
+          <input id="eName" type="text" placeholder="课程名称" />
+        </div>
+        <div class="form-flex">
+          <div class="form-row">
+            <label>课程代码</label>
+            <input id="eCode" type="text" placeholder="如 254101（可空）" />
+          </div>
+          <div class="form-row">
+            <label>课程类型</label>
+            <select id="ePub">
+              <option value="false">选修课（可隐藏）</option>
+              <option value="true">公共课（不可隐藏）</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-flex">
+          <div class="form-row">
+            <label>授课教师（任课老师）</label>
+            <input id="eTeacher" type="text" placeholder="教师姓名" />
+          </div>
+          <div class="form-row" style="max-width:110px;">
+            <label>学分</label>
+            <input id="eCredit" type="number" min="0" max="20" step="0.5" value="2" />
+          </div>
+          <div class="form-row" style="max-width:110px;">
+            <label>学时</label>
+            <input id="eHours" type="number" min="0" max="200" step="1" placeholder="可空" />
+          </div>
+        </div>
+        <div class="form-row">
+          <label>排课明细（教师上课节次 / 教室，可逐条增删）</label>
+          <div class="se-head">
+            <span class="se-weeks">周次</span>
+            <span class="se-day">星期</span>
+            <span class="se-slots">节次</span>
+            <span class="se-loc">教室</span>
+            <span class="se-x"></span>
+          </div>
+          <div id="eSlotsBox"></div>
+          <button type="button" class="e-add-slot" id="eAddSlot">＋ 添加排课</button>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="editCancel">取消</button>
+          <button class="btn primary" id="editConfirm">保存修改</button>
         </div>
       </div>
     </div>
@@ -1320,6 +1403,91 @@ function submitAdd() {
   afterEdit(`已添加：「${course.name}」${DAYS[day-1]} 第${slots.join("-")}节 · ${wStr} · ${loc}`);
 }
 
+/* ===== 修改课程弹窗 ===== */
+const editOverlay = document.getElementById("editOverlay");
+document.getElementById("editCancel").addEventListener("click", closeEditModal);
+document.getElementById("editConfirm").addEventListener("click", submitEdit);
+document.getElementById("eAddSlot").addEventListener("click", () => addEditSlotRow());
+editOverlay.addEventListener("click", (e) => { if (e.target === editOverlay) closeEditModal(); });
+
+let editCtx = null;
+function closeEditModal() { editOverlay.classList.remove("show"); editCtx = null; }
+
+function openEditModal(courseId) {
+  const c = COURSES.find(x => x.id === courseId);
+  if (!c) return;
+  editCtx = { courseId };
+  document.getElementById("eName").value = c.name || "";
+  document.getElementById("eCode").value = c.code || "";
+  document.getElementById("eTeacher").value = c.teacher || "";
+  document.getElementById("eCredit").value = String(c.credit ?? 2);
+  document.getElementById("eHours").value = (c.hours != null) ? String(c.hours) : "";
+  document.getElementById("ePub").value = c.pub ? "true" : "false";
+  const box = document.getElementById("eSlotsBox");
+  box.innerHTML = "";
+  (c.slots || []).forEach(s => addEditSlotRow(s));
+  editOverlay.classList.add("show");
+}
+
+function addEditSlotRow(slot) {
+  const s = slot || { weeks: [[currentWeek, currentWeek]], day: 1, slot: [1], loc: "" };
+  const box = document.getElementById("eSlotsBox");
+  const row = document.createElement("div");
+  row.className = "slot-edit-row";
+  const weeksStr = (s.weeks || []).map(([a, b]) => a === b ? String(a) : `${a}-${b}`).join(",");
+  const slotStr = (s.slot || []).join(",");
+  row.innerHTML = `
+    <input class="se-weeks" type="text" value="${weeksStr}" placeholder="2-11" />
+    <select class="se-day">
+      ${DAYS.map((d, i) => `<option value="${i + 1}" ${i + 1 === s.day ? "selected" : ""}>${d}</option>`).join("")}
+    </select>
+    <input class="se-slots" type="text" value="${slotStr}" placeholder="6-7" />
+    <input class="se-loc" type="text" value="${s.loc || ""}" placeholder="会通楼 518" />
+    <button type="button" class="se-del" title="删除该排课">✕</button>
+  `;
+  row.querySelector(".se-del").addEventListener("click", () => row.remove());
+  box.appendChild(row);
+}
+
+function submitEdit() {
+  if (!editCtx) return;
+  const c = COURSES.find(x => x.id === editCtx.courseId);
+  if (!c) return;
+  const name = document.getElementById("eName").value.trim();
+  if (!name) { showToast("请填写课程名称"); return; }
+  const teacher = document.getElementById("eTeacher").value.trim();
+  if (!teacher) { showToast("请填写授课教师"); return; }
+  const credit = parseFloat(document.getElementById("eCredit").value) || 0;
+  const hoursRaw = document.getElementById("eHours").value.trim();
+  const hours = hoursRaw === "" ? null : (parseFloat(hoursRaw) || null);
+  const code = document.getElementById("eCode").value.trim();
+  const pub = document.getElementById("ePub").value === "true";
+
+  const rows = document.querySelectorAll("#eSlotsBox .slot-edit-row");
+  const newSlots = [];
+  for (const row of rows) {
+    const weeks = parseWeeks(row.querySelector(".se-weeks").value);
+    const day = parseInt(row.querySelector(".se-day").value, 10);
+    const slots = parseSlots(row.querySelector(".se-slots").value);
+    const loc = row.querySelector(".se-loc").value.trim() || "待定";
+    if (!weeks.length) { showToast("周次格式不正确，示例：2-11 或 2,5-13"); return; }
+    if (!slots.length) { showToast("节次格式不正确，示例：6 或 6-7"); return; }
+    newSlots.push({ weeks, day, slot: slots, loc });
+  }
+  if (!newSlots.length) { showToast("至少需要保留一条排课记录"); return; }
+
+  c.name = name;
+  c.code = code;
+  c.teacher = teacher;
+  c.credit = credit;
+  c.hours = hours;
+  c.pub = pub;
+  c.slots = newSlots;
+
+  closeEditModal();
+  afterEdit(`已修改课程「${c.name}」：教师 / 节次 / 学分 / 学时 / 教室 已同步更新`);
+}
+
 /* ===== toast ===== */
 let toastTimer = null;
 function showToast(msg) {
@@ -1528,6 +1696,13 @@ function renderLegend() {
       btn.title = "点击切换该课程的公共课/选修课类型";
       btn.addEventListener("click", () => togglePub(c.id));
       actions.appendChild(btn);
+
+      const ed = document.createElement("button");
+      ed.className = "legend-edit";
+      ed.textContent = "✎ 修改";
+      ed.title = "修改该课程的教师 / 节次 / 学分 / 学时 / 教室";
+      ed.addEventListener("click", () => openEditModal(c.id));
+      actions.appendChild(ed);
 
       const del = document.createElement("button");
       del.className = "legend-del";
