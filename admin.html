@@ -277,17 +277,7 @@
   .legend-type.pub { background: #dbeafe; color: #1d4ed8; }
   .legend-type.ele { background: #ffedd5; color: #c2410c; }
 
-  /* 公共课/选修课类型切换按钮（管理员编辑模式下图例中显示） */
-  .legend-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
-  .pub-toggle { border: none; border-radius: 999px; padding: 5px 12px; font-size: 11.5px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all 0.15s; }
-  .pub-toggle.pub { background: #dbeafe; color: #1d4ed8; }
-  .pub-toggle.ele { background: #ffedd5; color: #c2410c; }
-  .pub-toggle:hover { transform: translateY(-1px); }
-  .legend-del { border: none; border-radius: 999px; padding: 5px 12px; font-size: 11.5px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all 0.15s; background: #fef2f2; color: #dc2626; }
-  .legend-del:hover { background: #dc2626; color: #fff; transform: translateY(-1px); }
-  /* 修改课程按钮（管理员编辑模式下图例中显示） */
-  .legend-edit { border: none; border-radius: 999px; padding: 5px 12px; font-size: 11.5px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all 0.15s; background: #eef2ff; color: #4338ca; }
-  .legend-edit:hover { background: #4338ca; color: #fff; transform: translateY(-1px); }
+  /* 编辑模式下"修改课程 / 公共课选修切换 / 删除课程"统一收纳在修改弹窗内，图例卡片不再渲染任何操作按钮，保持与查看态视觉一致。 */
 
   /* 修改课程弹窗内的排课明细逐条编辑器 */
   .se-head { display: flex; gap: 6px; font-size: 11px; color: var(--ink-3); font-weight: 600; margin: 4px 0 4px; }
@@ -413,6 +403,20 @@
   .btn.primary:hover { background: #1d4ed8; }
   .btn.ghost { background: #f1f5f9; color: var(--ink-2); }
   .btn.ghost:hover { background: #e2e8f0; }
+  .btn.danger { background: #fef2f2; color: #dc2626; }
+  .btn.danger:hover { background: #dc2626; color: #fff; }
+  .modal-actions.has-danger { justify-content: space-between; }
+
+  /* 编辑态：图例卡片整体可点击（修改整门课）；查看态保持纯展示、零视觉差异 */
+  body.editing .legend-item {
+    cursor: pointer; border-radius: 10px;
+    padding: 8px 10px; margin: -8px -10px;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+  body.editing .legend-item:hover {
+    background: rgba(59,130,246,0.06);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  }
 
   /* toast 提示 */
   .toast {
@@ -530,7 +534,7 @@
       <b>编辑模式已开启：</b>① 拖动课程卡片到任意格子，选「合并/调换」处理（含全部周次，节次块长度不变）；
       ② 拖动列顶表头到另一列，可整列「合并/调换」；③ 点击带 <b>＋</b> 的空格子添加课程；
       ④ 点课程卡片右上角 <b>×</b> 删除该排课（课程无排课后整门删除）；⑤ 上方输入框可修改<b>网站标题</b>与<b>小标题</b>（大标题上方那行）；
-      ⑥ 底部课程图例中每门课右侧有「公共课/选修课」切换按钮，点击可修改类型——公共课普通用户不可隐藏，选修课允许本机隐藏；旁有「✕ 删除课程」按钮可直接删除整门课程（含全部排课）。
+      ⑥ 点击底部课程图例中的任意课程卡片，弹出修改面板：可改教师 / 节次 / 学分 / 学时 / 教室 / 课程类型（公共课/选修课），也可一键删除整门课程。
       每次修改自动保存，用户网页 3 秒内自动同步。
     </div>
 
@@ -716,9 +720,12 @@
           <div id="eSlotsBox"></div>
           <button type="button" class="e-add-slot" id="eAddSlot">＋ 添加排课</button>
         </div>
-        <div class="modal-actions">
-          <button class="btn ghost" id="editCancel">取消</button>
-          <button class="btn primary" id="editConfirm">保存修改</button>
+        <div class="modal-actions has-danger">
+          <button class="btn danger" id="editDeleteCourse" title="删除整门课程（含全部排课）">🗑 删除整门课程</button>
+          <div style="display:flex; gap:10px;">
+            <button class="btn ghost" id="editCancel">取消</button>
+            <button class="btn primary" id="editConfirm">保存修改</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1262,15 +1269,7 @@ function deleteSlot(courseId, slotIndex) {
   });
 }
 
-/* 切换课程的公共课/选修课类型（公共课不可隐藏，选修课允许普通用户本机隐藏） */
-function togglePub(courseId) {
-  const c = COURSES.find(x => x.id === courseId);
-  if (!c) return;
-  c.pub = !c.pub;
-  afterEdit(`已将「${c.name}」设为${c.pub ? "公共课（不可隐藏）" : "选修课（可隐藏）"}`);
-}
-
-/* 删除整门课程（图例中操作，含确认弹窗） */
+/* 删除整门课程（由图例点击→修改弹窗触发；含确认弹窗） */
 function deleteCourse(courseId) {
   const c = COURSES.find(x => x.id === courseId);
   if (!c) return;
@@ -1408,6 +1407,13 @@ const editOverlay = document.getElementById("editOverlay");
 document.getElementById("editCancel").addEventListener("click", closeEditModal);
 document.getElementById("editConfirm").addEventListener("click", submitEdit);
 document.getElementById("eAddSlot").addEventListener("click", () => addEditSlotRow());
+/* 修改弹窗内的"删除整门课程"按钮：复用 deleteCourse 的确认弹窗，再关闭修改弹窗 */
+document.getElementById("editDeleteCourse").addEventListener("click", () => {
+  if (!editCtx) return;
+  const cid = editCtx.courseId;
+  closeEditModal();
+  deleteCourse(cid);
+});
 editOverlay.addEventListener("click", (e) => { if (e.target === editOverlay) closeEditModal(); });
 
 let editCtx = null;
@@ -1687,31 +1693,9 @@ function renderLegend() {
       </div>
     `;
     if (editMode) {
-      const actions = document.createElement("div");
-      actions.className = "legend-actions";
-
-      const btn = document.createElement("button");
-      btn.className = "pub-toggle " + (c.pub ? "pub" : "ele");
-      btn.textContent = c.pub ? "公共课 · 不可隐藏" : "选修课 · 可隐藏";
-      btn.title = "点击切换该课程的公共课/选修课类型";
-      btn.addEventListener("click", () => togglePub(c.id));
-      actions.appendChild(btn);
-
-      const ed = document.createElement("button");
-      ed.className = "legend-edit";
-      ed.textContent = "✎ 修改";
-      ed.title = "修改该课程的教师 / 节次 / 学分 / 学时 / 教室";
-      ed.addEventListener("click", () => openEditModal(c.id));
-      actions.appendChild(ed);
-
-      const del = document.createElement("button");
-      del.className = "legend-del";
-      del.textContent = "✕ 删除课程";
-      del.title = "删除整门课程（含所有排课）";
-      del.addEventListener("click", () => deleteCourse(c.id));
-      actions.appendChild(del);
-
-      item.appendChild(actions);
+      // 编辑态：整张卡片可点击，进入修改弹窗（弹窗内含公共课/选修切换、删除课程、字段编辑）
+      item.addEventListener("click", () => openEditModal(c.id));
+      item.title = "点击修改课程：教师 / 节次 / 学分 / 学时 / 教室 / 类型";
     }
     list.appendChild(item);
   });
