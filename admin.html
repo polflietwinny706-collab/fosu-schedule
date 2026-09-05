@@ -299,6 +299,21 @@
   .e-add-slot { margin-top: 4px; background: #f1f5f9; color: var(--primary); border: none; border-radius: 10px; padding: 8px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
   .e-add-slot:hover { background: #e2e8f0; }
 
+  /* 新增：电子书链接编辑行（沿用排课行的输入框观感） */
+  .ebook-edit-row { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .ebook-edit-row .ee-title { flex: 0 0 38%; }
+  .ebook-edit-row .ee-url { flex: 1 1 auto; }
+  .ebook-edit-row input {
+    width: 100%; border: 1px solid var(--line); border-radius: 8px;
+    padding: 7px 8px; font-size: 12.5px; font-family: inherit; background: #fff; color: var(--ink);
+  }
+  .ebook-edit-row input:focus { border-color: var(--primary); }
+  .ebook-edit-row .se-del {
+    flex: 0 0 auto; width: 30px; height: 32px; border: none; background: #fef2f2; color: #dc2626;
+    border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
+  .ebook-edit-row .se-del:hover { background: #dc2626; color: #fff; }
+
   .empty-cell { color: var(--ink-3); font-size: 11.5px; }
   .footer { text-align: center; color: var(--ink-3); font-size: 12px; margin-top: 24px; }
   .footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
@@ -718,6 +733,12 @@
           </div>
           <div id="eSlotsBox"></div>
           <button type="button" class="e-add-slot" id="eAddSlot">＋ 添加排课</button>
+        </div>
+        <!-- 新增：电子书链接编辑（支持多条，选填） -->
+        <div class="form-row">
+          <label>电子书链接（可添加多条，选填；名称留空时默认显示「电子书链接」）</label>
+          <div id="eEbookBox"></div>
+          <button type="button" class="e-add-slot" id="eAddEbook">＋ 添加链接</button>
         </div>
         <div class="modal-actions has-danger">
           <button class="btn danger" id="editDeleteCourse" title="删除整门课程（含全部排课）">🗑 删除整门课程</button>
@@ -1406,6 +1427,8 @@ const editOverlay = document.getElementById("editOverlay");
 document.getElementById("editCancel").addEventListener("click", closeEditModal);
 document.getElementById("editConfirm").addEventListener("click", submitEdit);
 document.getElementById("eAddSlot").addEventListener("click", () => addEditSlotRow());
+/* 新增：添加一条电子书链接 */
+document.getElementById("eAddEbook").addEventListener("click", () => addEditEbookRow());
 /* 修改弹窗内的"删除整门课程"按钮：复用 deleteCourse 的确认弹窗，再关闭修改弹窗 */
 document.getElementById("editDeleteCourse").addEventListener("click", () => {
   if (!editCtx) return;
@@ -1431,7 +1454,33 @@ function openEditModal(courseId) {
   const box = document.getElementById("eSlotsBox");
   box.innerHTML = "";
   (c.slots || []).forEach(s => addEditSlotRow(s));
+  /* 新增：回填已有电子书链接（无该字段时视为空数组，兼容旧数据） */
+  const ebookBox = document.getElementById("eEbookBox");
+  ebookBox.innerHTML = "";
+  (Array.isArray(c.ebookLinks) ? c.ebookLinks : []).forEach(l => addEditEbookRow(l));
   editOverlay.classList.add("show");
+}
+
+/* 新增：一条电子书链接编辑行 */
+function addEditEbookRow(link) {
+  const l = link || { title: "", url: "" };
+  const box = document.getElementById("eEbookBox");
+  const row = document.createElement("div");
+  row.className = "ebook-edit-row";
+  row.innerHTML = `
+    <input class="ee-title" type="text" value="${editEscape(l.title || "")}" placeholder="名称，如：教材电子版" />
+    <input class="ee-url" type="text" value="${editEscape(l.url || "")}" placeholder="https://..." />
+    <button type="button" class="se-del" title="删除该链接">✕</button>
+  `;
+  row.querySelector(".se-del").addEventListener("click", () => row.remove());
+  box.appendChild(row);
+}
+
+/* 新增：属性值转义（避免引号破坏 input 的 value） */
+function editEscape(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
 }
 
 function addEditSlotRow(slot) {
@@ -1481,6 +1530,15 @@ function submitEdit() {
   }
   if (!newSlots.length) { showToast("至少需要保留一条排课记录"); return; }
 
+  /* 新增：收集电子书链接，URL 为空的行直接忽略 */
+  const ebookLinks = [];
+  document.querySelectorAll("#eEbookBox .ebook-edit-row").forEach(row => {
+    const t = row.querySelector(".ee-title").value.trim();
+    const u = row.querySelector(".ee-url").value.trim();
+    if (!u) return;
+    ebookLinks.push({ title: t || "电子书链接", url: u });
+  });
+
   c.name = name;
   c.code = code;
   c.teacher = teacher;
@@ -1488,9 +1546,10 @@ function submitEdit() {
   c.hours = hours;
   c.pub = pub;
   c.slots = newSlots;
+  c.ebookLinks = ebookLinks;   /* 新增 */
 
   closeEditModal();
-  afterEdit(`已修改课程「${c.name}」：教师 / 节次 / 学分 / 学时 / 教室 已同步更新`);
+  afterEdit(`已修改课程「${c.name}」：教师 / 节次 / 学分 / 学时 / 教室${ebookLinks.length ? " / 电子书链接" : ""} 已同步更新`);
 }
 
 /* ===== toast ===== */

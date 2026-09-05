@@ -206,6 +206,21 @@
   .legend-type.pub { background: #dbeafe; color: #1d4ed8; }
   .legend-type.ele { background: #ffedd5; color: #c2410c; }
 
+  /* ===== 新增：图例课程可点击 + 详情面板电子书链接 ===== */
+  .legend-item.legend-clickable {
+    cursor: pointer; border-radius: 8px; padding: 4px 6px; margin: -4px -6px;
+    transition: background .15s ease;
+  }
+  .legend-item.legend-clickable:hover { background: #eef2f9; }
+  .ebook-link {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin: 2px 6px 2px 0; padding: 3px 12px;
+    background: #eff6ff; border: 1px solid #dbeafe; border-radius: 999px;
+    color: #1d4ed8; font-size: 12.5px; text-decoration: none;
+  }
+  .ebook-link:hover { background: #dbeafe; }
+  .ebook-none { color: var(--ink-3); font-size: 12.5px; }
+
   .empty-cell { color: var(--ink-3); font-size: 11.5px; }
   .footer { text-align: center; color: var(--ink-3); font-size: 12px; margin-top: 24px; }
   .day-header .date-tag { font-size: 10px; font-weight: 400; opacity: 0.75; margin-top: 2px; }
@@ -542,6 +557,11 @@
           <span class="dl-label">上课地点</span>
           <span class="dl-value" id="detailLoc"></span>
         </div>
+        <!-- 新增：电子书链接（课表格子详情 / 图例详情 共用同一行） -->
+        <div class="detail-row">
+          <span class="dl-label">电子书</span>
+          <span class="dl-value" id="detailEbook"></span>
+        </div>
       </div>
     </div>
   </div>
@@ -831,6 +851,71 @@ let currentWeek = loadWeek();
 const overlay = document.getElementById("detailOverlay");
 const detailClose = document.getElementById("detailClose");
 
+/* ===== 新增①：详情面板「电子书链接」渲染，课表格子与图例共用 ===== */
+function ebookEscape(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+
+function renderEbookLinks(course) {
+  const el = document.getElementById("detailEbook");
+  if (!el) return;
+  const list = Array.isArray(course.ebookLinks)
+    ? course.ebookLinks.filter(l => l && String(l.url || "").trim())
+    : [];
+  if (!list.length) {                       // 无链接时给出提示
+    el.innerHTML = '<span class="ebook-none">暂无电子书链接</span>';
+    return;
+  }
+  el.innerHTML = list.map(l => {
+    const title = ebookEscape(String(l.title || "").trim() || "电子书链接");
+    let url = String(l.url).trim();
+    if (!/^https?:\/\//i.test(url)) url = "https://" + url.replace(/^\/+/, "");
+    return `<a class="ebook-link" href="${ebookEscape(url)}" target="_blank" rel="noopener noreferrer">📖 ${title}</a>`;
+  }).join("");
+}
+
+/* ===== 新增②：图例点击 → 展示整门课完整信息，复用同一详情面板 ===== */
+function showCourseDetail(course) {
+  document.getElementById("detailBanner").className = "detail-banner " + course.cls;
+  document.getElementById("detailName").textContent = course.name;
+  document.getElementById("detailCode").textContent = course.code ? `课程代码：${course.code}` : "";
+  document.getElementById("detailTeacher").textContent = `${course.teacher} 老师`;
+  document.getElementById("detailCredit").textContent = course.hours
+    ? `${course.credit} 学分 / ${course.hours} 学时`
+    : `${course.credit} 学分`;
+
+  const timeEl = document.getElementById("detailTime");
+  const locEl = document.getElementById("detailLoc");
+  const slots = Array.isArray(course.slots) ? course.slots : [];
+
+  if (slots.length) {
+    timeEl.innerHTML = slots.map(s => {
+      const range = (s.weeks || []).map(([a, b]) => a === b ? `第${a}周` : `第${a}-${b}周`).join("、");
+      const dayName = DAYS[s.day - 1];
+      const slotStr = s.slot.join("-") + "节";
+      const timeStr = s.slot.map(n => {
+        const t = TIME_SLOTS[n];
+        return t ? `${t.start}-${t.end}` : "";
+      }).join(" / ");
+      return `<div class="time-block">
+        <div class="tb-main">${range} ${dayName} · 第${slotStr}</div>
+        <div class="tb-time">${timeStr ? timeStr + " · " : ""}${ebookEscape(s.loc)}</div>
+      </div>`;
+    }).join("");
+    const locs = [];
+    slots.forEach(s => { if (s.loc && !locs.includes(s.loc)) locs.push(s.loc); });
+    locEl.textContent = locs.join(" / ");
+  } else {
+    timeEl.textContent = "暂未排课";
+    locEl.textContent = "—";
+  }
+
+  renderEbookLinks(course);
+  overlay.classList.add("show");
+}
+
 /* 只展示当前周 + 当前节次对应的排课信息 */
 function showDetail(item, week, day) {
   const course = item.course;
@@ -868,6 +953,7 @@ function showDetail(item, week, day) {
     locEl.textContent = "—";
   }
 
+  renderEbookLinks(course);   /* 新增：底部渲染电子书链接（两处详情共用） */
   overlay.classList.add("show");
 }
 
@@ -1022,6 +1108,10 @@ function renderLegend() {
         <small>${timeLoc}</small>
       </div>
     `;
+    /* 新增：图例课程可点击，唤起与课表格子一致的详情面板 */
+    item.classList.add("legend-clickable");
+    item.title = "点击查看课程详情";
+    item.addEventListener("click", () => showCourseDetail(c));
     list.appendChild(item);
   });
 }
