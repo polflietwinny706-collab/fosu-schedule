@@ -272,7 +272,7 @@ body.editing .hdr-editable:hover { background: rgba(255,255,255,0.12); border-ra
   }
   body.editing .gh.day-header .col-grip {
     position: absolute; top: 3px; left: 6px; font-size: 11px; opacity: 0.7;
-    letter-spacing: -2px;
+    letter-spacing: -2px; cursor: grab;
   }
   .gh.day-header { position: relative; }
 
@@ -294,6 +294,8 @@ body.editing .hdr-editable:hover { background: rgba(255,255,255,0.12); border-ra
   .opt-btn.ghost { background: #f1f5f9; color: var(--ink-2); }
   .opt-btn.ghost:hover { background: #e2e8f0; }
   .opt-btn:last-child { margin-bottom: 0; }
+  .opt-btn:disabled, .opt-btn.opt-disabled { opacity: 0.45; cursor: not-allowed; background: #f1f5f9; color: var(--ink-2); }
+  .opt-btn:disabled:hover, .opt-btn.opt-disabled:hover { background: #f1f5f9; border-color: var(--line); transform: none; }
 
   .legend {
     background: var(--panel); border-radius: 14px; padding: 16px 18px;
@@ -1054,6 +1056,7 @@ function weekInRanges(week, ranges) {
 
 /* 编辑状态 */
 let editMode = false;
+let columnClipboard = null;   // 整列星期复制/剪切/粘贴剪贴板（仅内存，不落 localStorage；刷新即清空）
 let rev = 1;
 let dataEdited = false;
 /* 备注：键=周次（字符串），值=备注文本（仅本周可见） */
@@ -1335,8 +1338,9 @@ function openChoice(title, sub, options) {
     body.innerHTML = "";
     options.forEach(opt => {
       const b = document.createElement("button");
-      b.className = "opt-btn " + (opt.style || "");
+      b.className = "opt-btn " + (opt.style || "") + (opt.disabled ? " opt-disabled" : "");
       b.textContent = opt.label;
+      if (opt.disabled) { b.disabled = true; body.appendChild(b); return; }
       b.addEventListener("click", () => closeChoice(opt.value));
       body.appendChild(b);
     });
@@ -1572,6 +1576,112 @@ function swapColumnWeek(dayA, dayB, week) {
   });
   COURSES = COURSES.filter(c => c.slots.length > 0);
   afterEdit(`已调换（仅第${week}周）：${DAYS[dayA-1]} ⇄ ${DAYS[dayB-1]}（仅当前浏览周互换，其余周不变）`);
+}
+
+/* ===== 新增：整列星期「复制/剪切/粘贴/删除」菜单（仅编辑模式；粒度=单个周次+单个星期）=====
+   剪贴板为内存变量 columnClipboard，不写入 localStorage，刷新即清空。
+   所有写操作只影响「目标这一个周次」，绝不扩散到其他周次。 */
+function getColumnSlots(week, day) {
+  const out = [];
+  COURSES.forEach(c => {
+    c.slots.forEach(s => {
+      if (s.day === day && (s.weeks || []).some(([a, b]) => week >= a && week <= b)) {
+        out.push({ courseId: c.id, name: c.name, slot: JSON.parse(JSON.stringify(s)) });
+      }
+    });
+  });
+  return out;
+}
+/* 仅删除「某周某星期」的全部排课：把该周从相关 slot 的 weeks 区间切出，其余周保留 */
+function removeWeekFromColumn(day, week) {
+  let removed = 0;
+  COURSES.forEach(c => {
+    const toRemove = new Set();
+    c.slots.forEach((s, i) => {
+      if (s.day !== day) return;
+      const { weeks, hit } = removeWeekFromRanges(s.weeks, week);
+      if (!hit) return;
+      removed++;
+      s.weeks = weeks;
+      if (weeks.length === 0) toRemove.add(i);
+    });
+    if (toRemove.size) c.slots = c.slots.filter((_, i) => !toRemove.has(i));
+  });
+  COURSES = COURSES.filter(c => c.slots.length > 0);
+  return removed;
+}
+/* 主菜单：复制 / 剪切 / 粘贴 / 删除 / 取消（粘贴在剪贴板为空时置灰） */
+function openColumnMenu(week, day) {
+  if (!editMode) return;
+  const dName = DAYS[day - 1];
+  const hasCb = !!columnClipboard;
+  openChoice(`星期操作 · 第${week}周 ${dName}`, `对「第${week}周 ${dName}」整列执行操作：`, [
+    { label: "复制", value: "copy", style: "primary" },
+    { label: "剪切", value: "cut", style: "accent" },
+    { label: hasCb ? "粘贴" : "粘贴（剪贴板无内容）", value: "paste", style: "accent", disabled: !hasCb },
+    { label: "删除", value: "delete", style: "danger" },
+    { label: "取消", value: "cancel", style: "ghost" }
+  ]).then(act => {
+    if (act === "copy") colCopy(week, day);
+    else if (act === "cut") colCut(week, day);
+    else if (act === "paste") openPasteMenu(week, day);
+    else if (act === "delete") colDelete(week, day);
+  });
+}
+/* 粘贴二次弹窗：合并 / 调换 / 取消（全部仅作用于目标这一个周次） */
+function openPasteMenu(week, day) {
+  if (!columnClipboard) return;
+  const dName = DAYS[day - 1];
+  openChoice(`粘贴至：第${week}周 ${dName}`, `将剪贴板课程粘贴至：第${week}周 ${dName}，请选择处理方式`, [
+    { label: `合并：把剪贴板课程并入 ${dName}（${dName} 原有课程保留）`, value: "merge", style: "primary" },
+    { label: `覆盖：用剪贴板课程完全替换 ${dName}（清空 ${dName} 原有全部课程）`, value: "overwrite", style: "accent" },
+    { label: "取消", value: "cancel", style: "ghost" }
+  ]).then(m => {
+    if (m === "merge") pasteMerge(week, day);
+    else if (m === "overwrite") pasteOverwrite(week, day);
+  });
+}
+function colCopy(week, day) {
+  columnClipboard = { sourceWeek: week, sourceWeekday: day, mode: "copy", entries: getColumnSlots(week, day) };
+  showToast(`已复制：第${week}周 ${DAYS[day-1]}（${columnClipboard.entries.length} 个排课，可重复粘贴）`);
+  // 源未改动，无需保存/刷新
+}
+function colCut(week, day) {
+  const entries = getColumnSlots(week, day);
+  const removed = removeWeekFromColumn(day, week);
+  columnClipboard = { sourceWeek: week, sourceWeekday: day, mode: "cut", entries };
+  afterEdit(`已剪切：第${week}周 ${DAYS[day-1]}（${removed} 个排课已暂存剪贴板）`);
+}
+function colDelete(week, day) {
+  const removed = removeWeekFromColumn(day, week);
+  afterEdit(`已删除：第${week}周 ${DAYS[day-1]} 整列（${removed} 个排课）`);
+}
+/* 粘贴-合并：剪贴板课程并入目标星期（仅目标周次），目标原有课程保留；剪切模式粘贴后清空剪贴板 */
+function pasteMerge(week, day) {
+  if (!columnClipboard) return;
+  let n = 0;
+  columnClipboard.entries.forEach(e => {
+    const course = COURSES.find(c => c.id === e.courseId);
+    if (!course) return;
+    course.slots.push(Object.assign({}, e.slot, { day: day, weeks: [[week, week]] }));
+    n++;
+  });
+  afterEdit(`已粘贴（合并）：${DAYS[columnClipboard.sourceWeekday-1]}第${columnClipboard.sourceWeek}周 → ${DAYS[day-1]}第${week}周（${n} 个排课）`);
+  if (columnClipboard.mode === "cut") columnClipboard = null;
+}
+/* 粘贴-覆盖：仅目标这一个周次，用剪贴板课程完全替换目标星期（清空目标星期该周原有全部课程），其余周次不变 */
+function pasteOverwrite(week, day) {
+  if (!columnClipboard) return;
+  removeWeekFromColumn(day, week);   // 清空目标星期该周原有全部课程（其余周保留）
+  let n = 0;
+  columnClipboard.entries.forEach(e => {
+    const course = COURSES.find(c => c.id === e.courseId);
+    if (!course) return;
+    course.slots.push(Object.assign({}, e.slot, { day: day, weeks: [[week, week]] }));
+    n++;
+  });
+  afterEdit(`已粘贴（覆盖）：${DAYS[columnClipboard.sourceWeekday-1]}第${columnClipboard.sourceWeek}周 → ${DAYS[day-1]}第${week}周（${n} 个排课，目标星期已清空）`);
+  if (columnClipboard.mode === "cut") columnClipboard = null;
 }
 
 /* 删除排课：删掉一条 slot；课程没有排课后整门删除（自定义确认弹窗，兼容嵌入式预览） */
@@ -2029,19 +2139,23 @@ function render() {
     const dt = getWeekDate(currentWeek, di + 1);
     h.innerHTML = `${dName}<div class="date-tag">${formatDateDisplay(dt)}</div>`;
     if (editMode) {
-      h.draggable = true;
-      h.title = "按住可整列拖拽到其他列（合并/调换）";
+      // 拖拽源收敛到 grip 手柄：仅按住 ⋮⋮ 才发起整列拖拽；
+      // 表头其余区域保持「点击弹出菜单」，避免 draggable 与 click 互相吞事件（导致点表头不弹窗）。
+      h.title = "点击表头弹出整列操作菜单；按住 ⋮⋮ 可整列拖拽到其他列";
       const grip = document.createElement("span");
       grip.className = "col-grip";
       grip.textContent = "⋮⋮";
+      grip.draggable = true;
+      grip.title = "按住拖拽到其他列（合并/调换）";
       h.appendChild(grip);
-      h.addEventListener("dragstart", (e) => {
+      grip.addEventListener("dragstart", (e) => {
         colDrag = { sourceDay: di + 1 };
         h.classList.add("dragging");
         e.dataTransfer.effectAllowed = "move";
         try { e.dataTransfer.setData("text/plain", "col"); } catch (_) {}
       });
-      h.addEventListener("dragend", () => h.classList.remove("dragging"));
+      grip.addEventListener("dragend", () => h.classList.remove("dragging"));
+      // 放置目标仍在整列表头 h 上：拖到别的列表头即触发整列合并/调换
       h.addEventListener("dragover", (e) => { e.preventDefault(); h.classList.add("drop-target"); });
       h.addEventListener("dragleave", () => h.classList.remove("drop-target"));
       h.addEventListener("drop", (e) => {
@@ -2053,6 +2167,8 @@ function render() {
           if (src !== di + 1) handleColumnDrop(src, di + 1);
         }
       });
+      // 整列星期菜单：点击星期表头（非拖拽）弹出（仅编辑模式）
+      h.addEventListener("click", () => openColumnMenu(currentWeek, di + 1));
     }
     grid.appendChild(h);
   });
