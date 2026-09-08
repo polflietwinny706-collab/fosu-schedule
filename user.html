@@ -59,6 +59,10 @@
     box-shadow: var(--shadow);
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     margin-bottom: 18px;
+    /* 新增（CLS 优化）：周次按钮为动态生成，未渲染前先按单行高度占位，
+       避免按钮插入后容器被撑高导致页面上下位移。用 min-height 而非固定 height，
+       内容更多（如周次范围变大、按钮换行）时容器仍会自动撑开。 */
+    min-height: 64px;
   }
   .week-bar .label { font-size: 14px; color: var(--ink-2); margin-right: 4px; font-weight: 600; }
   .week-bar .quick { margin-left: auto; display: flex; gap: 6px; }
@@ -107,6 +111,10 @@
   .grid-wrap {
     background: var(--panel); border-radius: 14px; padding: 14px;
     box-shadow: var(--shadow); overflow-x: auto;
+    /* 新增（CLS 优化）：课表网格为动态渲染（表头 1 行 + 节次 11 行），
+       渲染前先按最终高度占位，避免网格插入时容器高度突变造成页面抖动。
+       同样使用 min-height：课表行数/内容增多时容器依旧自动撑开，不会裁切。 */
+    min-height: 780px;
   }
   .grid {
     display: grid;
@@ -506,6 +514,14 @@
     .grid.show-weekend > .gh:nth-child(8n+8) { display: block; }
     .grid.show-weekend > .gc:nth-child(8n+7),
     .grid.show-weekend > .gc:nth-child(8n+8) { display: flex; }
+  }
+  /* ===== 新增（CLS 优化）：手机端（≤768px）容器最小高度占位 =====
+     手机端周次栏为三行布局（标签 / 横滑按钮行 / 快捷按钮行），课表默认 6 列；
+     同样在动态渲染前预留最终高度，避免插入内容时页面上下抖动。
+     仅设 min-height，内容更多时容器仍可自动撑开。 */
+  @media (max-width: 768px) {
+    .week-bar { min-height: 140px; }
+    .grid-wrap { min-height: 700px; }
   }
 </style>
 </head>
@@ -954,14 +970,13 @@ function clearWeekGridCache() {
   for (const k in _weekGridCache) delete _weekGridCache[k];
 }
 
-/* 周次记忆：优先读取本地 localStorage 中上次选择的周次；未记录则用默认起始周（WEEK_START）。
-   不再自动定位到“今天”所在周，由浏览器记住用户上一次点击的周次。 */
+/* 周次记忆：页面初始化只读取 localStorage 中上次浏览的周次并恢复；无记录则用起始教学周。
+   已彻底删除"打开即强制跳到真实教学周"的初始化跳转，避免两次渲染切换造成闪烁。 */
 const WEEK_KEY = "fosu_week";
 function loadWeek() {
-  /* 新增（功能3）：打开页面即用公共函数实时推算教学周，自动定位，无需手动切换 */
-  const auto = resolveInitialWeek();
-  if (auto && auto >= WEEK_START && auto <= WEEK_END) return auto;
-  try {                                   // 兜底：推算失败时才回落到上次记忆
+  /* 初始化只做一件事：读取 localStorage 中上次浏览的周次并直接恢复。
+     无记录时使用合理默认周次（起始教学周 WEEK_START）；不再推算真实教学周。 */
+  try {
     const v = parseInt(localStorage.getItem(WEEK_KEY), 10);
     if (!isNaN(v) && v >= WEEK_START && v <= WEEK_END) return v;
   } catch (_) {}
@@ -971,9 +986,17 @@ function saveWeek() {
   try { localStorage.setItem(WEEK_KEY, String(currentWeek)); } catch (_) {}
 }
 let currentWeek = loadWeek();
+/* 手机端横滑容器：记录已定位过的浏览周。浏览周在此刻（渲染之前）已由 loadWeek() 同步确定，
+   横滑定位只跟随"浏览周是否变化"触发，避免重复 render 造成二次滚动。 */
+let _lastScrolledWeek = null;
+
+/* 初始化渲染守卫：false = 尚未完成首次渲染。
+   首次渲染前严格按 ① 拉全局配置 → ② 读 localStorage 定浏览周 → ③ 才渲染 的顺序执行，
+   因此"周次范围变更导致先渲染旧范围再重建 DOM"的二次渲染闪烁被彻底消除。 */
+let _initialRendered = false;
 
 /* 新增：教学周配置应用（供数据加载后调用）
-   用"配置签名"判断：首次加载或管理员改了基准日期 → 重新定位教学周；
+   用"配置签名"判断：首次加载或管理员改了基准日期 → 重新确定浏览周（仍只恢复上次浏览周）；
    轮询期间配置没变 → 不动 currentWeek，绝不把用户手动选的周次拉回去。 */
 let weekCfgSig = null;
 function applyWeekConfig(arg) {
@@ -990,7 +1013,18 @@ function applyWeekConfig(arg) {
   if (sig === weekCfgSig) return;
   weekCfgSig = sig;
   WEEK_BASE = base;
-  currentWeek = loadWeek(); saveWeek();
+  if (typeof currentWeek !== "undefined") {
+    if (!_initialRendered) {
+      /* 初始化阶段（此刻尚未渲染）：配置就绪后用最终展示范围重新确定浏览周 ——
+         localStorage 优先、无记录用默认起始周。尚未渲染，故不会产生任何闪烁。 */
+      const restored = loadWeek();
+      if (restored !== currentWeek) { currentWeek = restored; saveWeek(); }
+    } else {
+      /* 运行期：不打扰用户当前浏览，仅当越出新的展示范围时夹紧并回写 localStorage */
+      const fixed = Math.max(WEEK_START, Math.min(WEEK_END, currentWeek));
+      if (fixed !== currentWeek) { currentWeek = fixed; saveWeek(); }
+    }
+  }
 }
 
 /* 头部第 3 行元信息（只读，与管理端同步） */
@@ -1148,9 +1182,21 @@ function render() {
   }
 
   // 手机端横滑容器：把当前选中周次滚动到可视区域中央
+  /* 浏览周已先于本渲染确定；此处只做定位：
+     - 浏览周发生变化 → 平滑滚动到中央（仅一次）
+     - 浏览周未变化（初始化重渲染 / 轮询）→ 瞬时复原位置，不产生二次滚动动画 */
   const _activeBtn = wb.querySelector(".week-btn.active");
-  if (_activeBtn && typeof _activeBtn.scrollIntoView === "function") {
-    _activeBtn.scrollIntoView({ inline: "center", block: "nearest" });
+  if (_activeBtn && _lastScrolledWeek !== currentWeek) {
+    _lastScrolledWeek = currentWeek;
+    /* 等周按钮 DOM 完全插入并完成布局后（下一帧）再执行滚动，避免滚动引发二次布局抖动 */
+    requestAnimationFrame(() => {
+      if (typeof _activeBtn.scrollIntoView === "function") {
+        _activeBtn.scrollIntoView({ inline: "center", block: "nearest" });
+      }
+    });
+  } else if (_activeBtn && typeof wb.scrollTo === "function") {
+    const _left = _activeBtn.offsetLeft - (wb.clientWidth - _activeBtn.offsetWidth) / 2;
+    wb.scrollTo({ left: Math.max(0, _left), behavior: "auto" });
   }
 
   document.getElementById("wkBig").textContent = `第 ${currentWeek} 周`;
@@ -1353,8 +1399,7 @@ async function loadSchedule() {
       applyWeekConfig(data);  /* 应用基准日期/周次范围/人数并重算周次 */
       applyTitle(data.title);
       applySubtitle(data.subtitle);
-      renderLegend();
-      render();
+      if (_initialRendered) { renderLegend(); render(); }
     }
   } catch (e) { /* 服务器未启动或本地 file:// 打开时，使用内置默认数据 */ }
 }
@@ -1367,9 +1412,13 @@ async function loadSchedule() {
 const TODAY_DAY_IDX = getTodayDayIndex();
 const TODAY_STATUS = computeTodayStatus();
 
-renderLegend();
-render();
-loadSchedule();
+/* ===== 初始化时序（严格三段式，全程只渲染一次，消除二次渲染闪烁）=====
+   ① 拉取全局配置（第 1 教学周基准 / 起止教学周 / 人数）
+   ② 同步读取 localStorage 得到上次浏览周并完成浏览周赋值
+   ③ 数据与状态全部就绪后，才渲染周次按钮列表与课表主体（横向滑动定位同在此时执行） */
+Promise.resolve(loadSchedule())
+  .catch(() => { /* 服务器不可达时仍继续渲染，使用内置默认数据 */ })
+  .then(() => { _initialRendered = true; renderLegend(); render(); });
 /* 说明：下面这 3 秒轮询仅用于「管理员端改动后同步课表数据」，并不重算今日课程高亮状态；
    今日状态已在上面冻结（TODAY_STATUS / TODAY_DAY_IDX），不会被轮询改写。 */
 setInterval(loadSchedule, 3000);

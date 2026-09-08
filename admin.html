@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<html lang="zh-CN" data-page-node-id="zBDAWoUJMa3ozdoyneWhI5">
+<head data-page-node-id="nKHHUhGCWsa54jGGrU85W7">
+<meta charset="UTF-8" data-page-node-id="r1fnmWSXnX5QhmXBNtR5lB" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="1HE3le2V05Tqr3Bdg0uBqU" />
 <title>佛山大学 26级数学 研究生周课表 · 管理员版（第2-18周）</title>
-<link rel="manifest" href="admin-manifest.json" />
-<link rel="icon" href="favicon.ico" type="image/x-icon" />
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
-<link rel="apple-touch-icon" href="apple-touch-icon.png" />
-<meta name="theme-color" content="#6d28d9">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="反馈管理">
+<link rel="manifest" href="admin-manifest.json" data-page-node-id="Kt1ItKAEyyw8AqSXeG9TPy" />
+<link rel="icon" href="favicon.ico" type="image/x-icon" data-page-node-id="dS8zOPDQ4znljybgHKELJB" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" data-page-node-id="zo3BI1cJl0itdH1UKnAd1W" />
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" data-page-node-id="1B7QNzS3iid3Ej5oEe0aPs" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" data-page-node-id="SLkq7gKLbsByP3CAZTAMoF" />
+<meta name="theme-color" content="#6d28d9" data-page-node-id="N7wPHEtaDjsHWXVXfRGWAY">
+<meta name="mobile-web-app-capable" content="yes" data-page-node-id="CSVKaSvGd2jySrs22PM7C0">
+<meta name="apple-mobile-web-app-status-bar-style" content="default" data-page-node-id="DfH8PmbnlXaqza43cXFQ4p">
+<meta name="apple-mobile-web-app-title" content="反馈管理" data-page-node-id="PbD1yRDnX5sbesKNkLoMvJ">
 <style>
   :root {
     --bg: #f5f7fb;
@@ -105,6 +105,10 @@ body.editing .hdr-editable:hover { background: rgba(255,255,255,0.12); border-ra
     box-shadow: var(--shadow);
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     margin-bottom: 18px;
+    /* 新增（CLS 优化）：周次按钮为动态生成，未渲染前先按单行高度占位，
+       避免按钮插入后容器被撑高导致页面上下位移。用 min-height 而非固定 height，
+       内容更多（如周次范围变大、按钮换行）时容器仍会自动撑开。 */
+    min-height: 64px;
   }
   .week-bar .label { font-size: 14px; color: var(--ink-2); margin-right: 4px; font-weight: 600; }
   .week-bar .quick { margin-left: auto; display: flex; gap: 6px; }
@@ -166,6 +170,10 @@ body.editing .hdr-editable:hover { background: rgba(255,255,255,0.12); border-ra
   .grid-wrap {
     background: var(--panel); border-radius: 14px; padding: 14px;
     box-shadow: var(--shadow); overflow-x: auto;
+    /* 新增（CLS 优化）：课表网格为动态渲染（表头 1 行 + 节次 11 行），
+       渲染前先按最终高度占位，避免网格插入时容器高度突变造成页面抖动。
+       同样使用 min-height：课表行数/内容增多时容器依旧自动撑开，不会裁切。 */
+    min-height: 780px;
   }
   .grid {
     display: grid;
@@ -565,236 +573,244 @@ body.editing .hdr-editable:hover { background: rgba(255,255,255,0.12); border-ra
     .fb-enter { padding: 9px 14px; font-size: 12.5px; }
     .fb-reply-input { min-width: 100%; }
   }
+  /* ===== 新增（CLS 优化）：手机端（≤768px）容器最小高度占位 =====
+     手机端周次栏为三行布局（标签 / 横滑按钮行 / 快捷按钮行），课表默认 6 列；
+     同样在动态渲染前预留最终高度，避免插入内容时页面上下抖动。
+     仅设 min-height，内容更多时容器仍可自动撑开。 */
+  @media (max-width: 768px) {
+    .week-bar { min-height: 140px; }
+    .grid-wrap { min-height: 700px; }
+  }
 </style>
 </head>
-<body>
-  <button class="edit-toggle" id="editToggle" title="进入/退出课表编辑模式">✎ 编辑</button>
-  <button class="fb-enter" id="fbEnter" title="反馈管理（查看/回复/公开/删除）">💬 反馈管理</button>
-  <button class="fb-enter" id="installBtn" title="安装为本地应用（可离线访问）" style="top:64px;display:none;">📥 安装应用</button>
+<body data-page-node-id="T8fnMKaDoxe3ekBFHQggAM">
+  <button class="edit-toggle" id="editToggle" title="进入/退出课表编辑模式" data-page-node-id="BhKjU9BLcRdw2wiRLMPgHs">✎ 编辑</button>
+  <button class="fb-enter" id="fbEnter" title="反馈管理（查看/回复/公开/删除）" data-page-node-id="1ryAg6qcesDcAW8jMeGsD4">💬 反馈管理</button>
+  <button class="fb-enter" id="installBtn" title="安装为本地应用（可离线访问）" style="top:64px;display:none;" data-page-node-id="JBdQI7tPEQrty8Q0vzfHD4">📥 安装应用</button>
 
-  <header class="header">
-    <div class="header-inner">
-      <div class="school"><span id="appSubtitle">佛山大学 · 2026 年秋季学期</span> <span class="admin-badge">管理员</span></div>
-      <div class="title" id="appTitle">26 级数学专业 研究生周课表</div>
-      <div class="subtitle"><span id="hdrWeekRange">第 2 周 — 第 18 周</span> · <span id="hdrPeople" class="hdr-editable">共 21 人</span> · <span id="hdrCourseCount">8 门课程</span></div>
+  <header class="header" data-page-node-id="f9zZIEnPUf1kDeVBTSCQKd">
+    <div class="header-inner" data-page-node-id="BCqxclceKZSMQnTfaBskyF">
+      <div class="school" data-page-node-id="QpRmkHQcfFXI88Z8xAePvs"><span id="appSubtitle" data-page-node-id="6yTdCvmsuwbN2yEbL4pGa3">佛山大学 · 2026 年秋季学期</span> <span class="admin-badge" data-page-node-id="oAvSGSfZSGY0AhFYoKSVXt">管理员</span></div>
+      <div class="title" id="appTitle" data-page-node-id="i0CcIyZDlGyMlku7d9LKjr">26 级数学专业 研究生周课表</div>
+      <div class="subtitle" data-page-node-id="rzEGYGvFsADQAEDGlBrO2i"><span id="hdrWeekRange" data-page-node-id="ic1phbyEn1sYgSikBUzh1V">第 2 周 — 第 18 周</span> · <span id="hdrPeople" class="hdr-editable" data-page-node-id="cGLnfMGgrgCrVgnfV9reVr">共 21 人</span> · <span id="hdrCourseCount" data-page-node-id="y0SOLOaKYZjQGBTJ0xNN1l">8 门课程</span></div>
     </div>
   </header>
 
-  <main class="container">
-    <div class="edit-hint">
-      <b>编辑模式已开启：</b>① 拖动课程卡片到任意格子，选「合并/调换」处理（含全部周次，节次块长度不变）；
-      ② 拖动列顶表头到另一列，可整列「合并/调换」；③ 点击带 <b>＋</b> 的空格子添加课程；
-      ④ 点课程卡片右上角 <b>×</b> 删除该排课（课程无排课后整门删除）；⑤ 点击页头第 1/2 行文字可<b>原地修改网站标题与小标题</b>，点击第 3 行「共XX人」可改人数；
+  <main class="container" data-page-node-id="lXDNZfqVrSllJHDVFj8ZtJ">
+    <div class="edit-hint" data-page-node-id="clNPmpnzKVRptGLkilTlDi">
+      <b data-page-node-id="Po1glRRGViODfAbVZuyYxf">编辑模式已开启：</b>① 拖动课程卡片到任意格子，选「合并/调换」处理（含全部周次，节次块长度不变）；
+      ② 拖动列顶表头到另一列，可整列「合并/调换」；③ 点击带 <b data-page-node-id="MBMUOu83PQuXQ7cXFIr4FD">＋</b> 的空格子添加课程；
+      ④ 点课程卡片右上角 <b data-page-node-id="XCX5SVaonfnrDGHGJLBArX">×</b> 删除该排课（课程无排课后整门删除）；⑤ 点击页头第 1/2 行文字可<b data-page-node-id="LEuYJRJvLGYgfWNDMe1Gpv">原地修改网站标题与小标题</b>，点击第 3 行「共XX人」可改人数；
       ⑥ 点击底部课程图例中的任意课程卡片，弹出修改面板：可改教师 / 节次 / 学分 / 学时 / 教室 / 课程类型（公共课/选修课），也可一键删除整门课程。
       每次修改自动保存，用户网页 3 秒内自动同步。
     </div>
 
     <!-- 头部标题已改为原地内联编辑，下方不再保留独立表单 -->
 
-    <div class="week-bar">
-      <span class="label">选择周次</span>
-      <div id="weekButtons"></div>
-      <div class="quick">
-        <button class="quick-btn" data-act="prev">← 上一周</button>
-        <button class="quick-btn" data-act="next">下一周 →</button>
-        <button class="quick-btn" data-act="reset">回到本周</button>
+    <div class="week-bar" data-page-node-id="fENDVHfAPe191Vq56bExvk">
+      <span class="label" data-page-node-id="gAwDQCwkYzssnf67C5AF4n">选择周次</span>
+      <div id="weekButtons" data-page-node-id="BaffSTiit73vyQUcVVIXpV"></div>
+      <div class="quick" data-page-node-id="Rqvx4wuvOiVdhSv6a78YoC">
+        <button class="quick-btn" data-act="prev" data-page-node-id="dMEVjNckczzUy3aNiaLjOv">← 上一周</button>
+        <button class="quick-btn" data-act="next" data-page-node-id="E22kq3KpdMTMkVZqbIjg4J">下一周 →</button>
+        <button class="quick-btn" data-act="reset" data-page-node-id="LWdNrRCjuFyMKYhrRpGBAh">回到本周</button>
       </div>
     </div>
 
-    <div class="meta-card">
-      <div class="wk" id="wkBig">第 2 周</div>
-      <div class="desc" id="wkDesc">查看所选周课程安排</div>
-      <span class="pill" id="wkCount">0 节课</span>
-      <span class="pill warn" id="wkNote" style="display:none;"></span>
-      <input type="text" id="wkNoteInput" class="note-input" maxlength="80" placeholder="本周备注（仅本周可见，留空则不显示）" style="display:none;" />
+    <div class="meta-card" data-page-node-id="aSFWykTzjfbPqn49DurKZr">
+      <div class="wk" id="wkBig" data-page-node-id="rS34lDopEpuF38VtPCwCs5">第 2 周</div>
+      <div class="desc" id="wkDesc" data-page-node-id="p2lNeVOcVAlneAKICEEmK9">查看所选周课程安排</div>
+      <span class="pill" id="wkCount" data-page-node-id="kD2M5BZIIJwqiBdmKSzCF8">0 节课</span>
+      <span class="pill warn" id="wkNote" style="display:none;" data-page-node-id="9UqRTX0rHnKb0NMBDHfZoP"></span>
+      <input type="text" id="wkNoteInput" class="note-input" maxlength="80" placeholder="本周备注（仅本周可见，留空则不显示）" style="display:none;" data-page-node-id="mrGS6A1yvmRlPIPxQnyuKV" />
     </div>
 
-    <div class="grid-wrap">
-      <div class="grid" id="grid"></div>
+    <div class="grid-wrap" data-page-node-id="ywTyXa8PXAdw8so6bpCc6i">
+      <div class="grid" id="grid" data-page-node-id="4HTF6AULisuTzAFUWj5H7T"></div>
     </div>
 
-    <div class="legend">
-      <h3>课程图例</h3>
-      <div class="legend-list" id="legendList"></div>
+    <div class="legend" data-page-node-id="k0TE9ZhHVTWdle7qMBNJkx">
+      <h3 data-page-node-id="NAvDxiFg4JilEZMS9ZsuKz">课程图例</h3>
+      <div class="legend-list" id="legendList" data-page-node-id="Xuuk0Ywigk9W1nw9ElteZ2"></div>
     </div>
 
     <!-- 新增：学期设置（仅编辑模式可见） -->
-    <div class="legend" id="termCfgPanel">
-      <h3>学期设置</h3>
+    <div class="legend" id="termCfgPanel" data-page-node-id="PN55o5chDzxsGVFoALSCh0">
+      <h3 data-page-node-id="J2VppAdYVFrDxfhokFuOTy">学期设置</h3>
 
-      <div class="form-row" style="margin-bottom:16px;">
-        <label>本学期第 1 教学周起始公历日期（须为该周周一）</label>
-        <div class="cfg-line">
-          <input type="date" id="weekBaseInput" />
-          <button class="btn primary" id="weekBaseSaveBtn">保存基准日期</button>
-          <span class="cfg-hint" id="weekBaseHint"></span>
+      <div class="form-row" style="margin-bottom:16px;" data-page-node-id="w2MQpf5xnEuVuAzEZGVLqi">
+        <label data-page-node-id="CypNFyMxIoMlAR3c8PblFE">本学期第 1 教学周起始公历日期（须为该周周一）</label>
+        <div class="cfg-line" data-page-node-id="U56gAkDKgeZ1AnjjkVAM31">
+          <input type="date" id="weekBaseInput" data-page-node-id="Hx1peGAsbKTrbH6HiiFkea" />
+          <button class="btn primary" id="weekBaseSaveBtn" data-page-node-id="zsPHIgFAGhyTXxto4VsH1h">保存基准日期</button>
+          <span class="cfg-hint" id="weekBaseHint" data-page-node-id="FQBCdISLzbDTOUAZCBxIRR"></span>
         </div>
       </div>
 
-      <div class="form-row" style="margin-bottom:16px;">
-        <label>展示周次范围（起始教学周 — 结束教学周）</label>
-        <div class="cfg-line">
-          <input type="number" id="weekStartInput" min="1" max="30" style="width:72px;" />
-          <span>—</span>
-          <input type="number" id="weekEndInput" min="1" max="30" style="width:72px;" />
-          <button class="btn primary" id="weekRangeSaveBtn">保存周次范围</button>
-          <span class="cfg-hint" id="weekRangeHint"></span>
+      <div class="form-row" style="margin-bottom:16px;" data-page-node-id="KHiXR7hMFoR45SSmP3C9JQ">
+        <label data-page-node-id="BgXml6sZDYcB4H1HuxQrnA">展示周次范围（起始教学周 — 结束教学周）</label>
+        <div class="cfg-line" data-page-node-id="Xdvxb4OL4QUE4o38F1gtY7">
+          <input type="number" id="weekStartInput" min="1" max="30" style="width:72px;" data-page-node-id="ne5sG4uxfAGJWA1Dtpzp7T" />
+          <span data-page-node-id="3rN3TLI7SVumMvIH6LERX1">—</span>
+          <input type="number" id="weekEndInput" min="1" max="30" style="width:72px;" data-page-node-id="C3jjJj6DGqfnQ7ZvpCVNY0" />
+          <button class="btn primary" id="weekRangeSaveBtn" data-page-node-id="7zJAgeebH9LxHKRj2HIAUp">保存周次范围</button>
+          <span class="cfg-hint" id="weekRangeHint" data-page-node-id="gliGYwOX4cogJ4VF0s2qt4"></span>
         </div>
       </div>
     </div>
 
-    <div class="footer">
+    <div class="footer" data-page-node-id="iOofGOyBVuRROxNkIe9ajj">
       数据来源：课表.jpg + 26级数学研究生课程开课表.xlsx · 管理员端由小波构建 ·
-      <a href="user.html">查看用户网页 →</a>
+      <a href="user.html" data-page-node-id="Y4eFWQvPSJXx7cm3Pq6nU8">查看用户网页 →</a>
     </div>
   </main>
 
   <!-- 课程详情面板 -->
-  <div class="detail-overlay" id="detailOverlay">
-    <div class="detail-card" id="detailCard">
-      <button class="detail-close" id="detailClose" aria-label="关闭">&times;</button>
-      <div class="detail-banner" id="detailBanner">
-        <div class="detail-name" id="detailName"></div>
-        <div class="detail-code" id="detailCode"></div>
+  <div class="detail-overlay" id="detailOverlay" data-page-node-id="CNGaBgKbac4C9wqqiPy2Uo">
+    <div class="detail-card" id="detailCard" data-page-node-id="EkSKt9ONiuqAR0lFPRQIzh">
+      <button class="detail-close" id="detailClose" aria-label="关闭" data-page-node-id="Gfth8KisNni8o9tBKtXBdg">&times;</button>
+      <div class="detail-banner" id="detailBanner" data-page-node-id="dtg7G2QbBCxuAGe1zkdv8C">
+        <div class="detail-name" id="detailName" data-page-node-id="KSlF6d3AOPvbgBY0LEKWQQ"></div>
+        <div class="detail-code" id="detailCode" data-page-node-id="Fu8eCnPDe0i8CD2XQ4BXhK"></div>
       </div>
-      <div class="detail-body">
-        <div class="detail-row">
-          <span class="dl-label">授课教师</span>
-          <span class="dl-value" id="detailTeacher"></span>
+      <div class="detail-body" data-page-node-id="nur5cQ0wGup0WJQGZ9Q3Sd">
+        <div class="detail-row" data-page-node-id="GZ6FtlRPLdffgsFbVNOcVS">
+          <span class="dl-label" data-page-node-id="n1SYFkyzqD45zvMCThyT8c">授课教师</span>
+          <span class="dl-value" id="detailTeacher" data-page-node-id="RCVSrpENgXBG5cAW80R59W"></span>
         </div>
-        <div class="detail-row">
-          <span class="dl-label">学分 / 学时</span>
-          <span class="dl-value" id="detailCredit"></span>
+        <div class="detail-row" data-page-node-id="40j7TcdH0xnmGq9mDvRkUE">
+          <span class="dl-label" data-page-node-id="uRsQ3nMuihng2Emr0ieB01">学分 / 学时</span>
+          <span class="dl-value" id="detailCredit" data-page-node-id="2t54m03bAykbjUBKXEz8Qo"></span>
         </div>
-        <div class="detail-row">
-          <span class="dl-label">上课时间</span>
-          <span class="dl-value" id="detailTime"></span>
+        <div class="detail-row" data-page-node-id="1sJDK5UsNGH7BOABelt5DF">
+          <span class="dl-label" data-page-node-id="QHhZFPd4UiTFK7q112BDBK">上课时间</span>
+          <span class="dl-value" id="detailTime" data-page-node-id="gzNXQYRFSPv1BszrCmW6vJ"></span>
         </div>
-        <div class="detail-row">
-          <span class="dl-label">上课地点</span>
-          <span class="dl-value" id="detailLoc"></span>
+        <div class="detail-row" data-page-node-id="BDA7NFKWEhOgW9U3NPx7Dg">
+          <span class="dl-label" data-page-node-id="x9zMsDd52gjUT8YDTTkDDn">上课地点</span>
+          <span class="dl-value" id="detailLoc" data-page-node-id="Iaz6lJx050VCHZUFLDiVOk"></span>
         </div>
       </div>
     </div>
   </div>
 
   <!-- 添加课程弹窗 -->
-  <div class="modal-overlay" id="addOverlay">
-    <div class="modal-card">
-      <div class="modal-head">
-        <div class="mh-title">添加课程排课</div>
-        <div class="mh-sub">目标格子：<span id="fDayLabel"></span> · 第 <span id="fSlotLabel"></span> 节</div>
+  <div class="modal-overlay" id="addOverlay" data-page-node-id="qriF8FccAV05IIOC0TlVAv">
+    <div class="modal-card" data-page-node-id="hEj1Ky5dF6IfMfgbyg4fUv">
+      <div class="modal-head" data-page-node-id="merDNwLYe9KwmG0lUzk1M0">
+        <div class="mh-title" data-page-node-id="Rc857YpfAwUxvbwULdjxaX">添加课程排课</div>
+        <div class="mh-sub" data-page-node-id="3dRiVeNLqZL8XfmFsjk72F">目标格子：<span id="fDayLabel" data-page-node-id="ATDTyvCHMSTcyaiyRzCH2D"></span> · 第 <span id="fSlotLabel" data-page-node-id="tvc6fFcF2aTQniBWENce5G"></span> 节</div>
       </div>
-      <div class="modal-body">
-        <div class="form-row">
-          <label>课程</label>
-          <select id="fCourse"></select>
+      <div class="modal-body" data-page-node-id="BHkGRcDuAAT8cKBmfpy2NA">
+        <div class="form-row" data-page-node-id="sekVu6VSHRgo3KxBz2rdmS">
+          <label data-page-node-id="Od6x16YuQZoRE5DZasyvPy">课程</label>
+          <select id="fCourse" data-page-node-id="cgBckjadreSpwJN3M69Kw2"></select>
         </div>
-        <div class="form-row" id="fNewNameRow" style="display:none;">
-          <label>新课程名称</label>
-          <input id="fNewName" type="text" placeholder="例如：矩阵论" />
+        <div class="form-row" id="fNewNameRow" style="display:none;" data-page-node-id="yXeld5uTbY8YXAlGPfu3PR">
+          <label data-page-node-id="rOwh9yZxAJPMLNWVWet0UH">新课程名称</label>
+          <input id="fNewName" type="text" placeholder="例如：矩阵论" data-page-node-id="hGxpeXXZN2zeWyF5f03d2F" />
         </div>
-        <div class="form-row">
-          <label>课程类型（公共课不可隐藏 / 选修课允许普通用户本机隐藏）</label>
-          <select id="fPub">
-            <option value="false">选修课（可隐藏）</option>
-            <option value="true">公共课（不可隐藏）</option>
+        <div class="form-row" data-page-node-id="UxBAtDpY8kJoR3MxjSjl7j">
+          <label data-page-node-id="Z4U2OqFRubqyclqIN2ia33">课程类型（公共课不可隐藏 / 选修课允许普通用户本机隐藏）</label>
+          <select id="fPub" data-page-node-id="CRCjgB4W7WpJqFt9I5D84A">
+            <option value="false" data-page-node-id="KMmI5RLh4znGz6AWUYrBHI">选修课（可隐藏）</option>
+            <option value="true" data-page-node-id="uTPkEPPHJlTkIKpjgRBqde">公共课（不可隐藏）</option>
           </select>
         </div>
-        <div class="form-flex">
-          <div class="form-row">
-            <label>授课教师</label>
-            <input id="fTeacher" type="text" placeholder="教师姓名" />
+        <div class="form-flex" data-page-node-id="T9un4YLTd0HfQXQh1wNNfq">
+          <div class="form-row" data-page-node-id="owFHfTREfFFHEAaXjZ2MpQ">
+            <label data-page-node-id="apiJoF2VRVh88Elbm8iGMA">授课教师</label>
+            <input id="fTeacher" type="text" placeholder="教师姓名" data-page-node-id="xaBEXHSdAKfFkp7PsRB8Tr" />
           </div>
-          <div class="form-row" style="max-width:110px;">
-            <label>学分</label>
-            <input id="fCredit" type="number" min="0" max="20" step="0.5" value="2" />
-          </div>
-        </div>
-        <div class="form-row">
-          <label>上课地点</label>
-          <input id="fLoc" type="text" placeholder="例如：会通楼 518" />
-        </div>
-        <div class="form-flex">
-          <div class="form-row">
-            <label>周次（如 2-11 或 2,5-13）</label>
-            <input id="fWeeks" type="text" />
-          </div>
-          <div class="form-row">
-            <label>节次（如 6-7）</label>
-            <input id="fSlots" type="text" />
+          <div class="form-row" style="max-width:110px;" data-page-node-id="YVta8MBOj8cotBz51yPs7L">
+            <label data-page-node-id="VczrenkEaCmhOFAMNBAqro">学分</label>
+            <input id="fCredit" type="number" min="0" max="20" step="0.5" value="2" data-page-node-id="WO3blcz60lLtYmW3DN9Ioq" />
           </div>
         </div>
-        <div class="modal-actions">
-          <button class="btn ghost" id="addCancel">取消</button>
-          <button class="btn primary" id="addConfirm">添加</button>
+        <div class="form-row" data-page-node-id="fGkijrWU469TH2d44JkNxe">
+          <label data-page-node-id="ElyVh0reYAxAEWsRFKDyCJ">上课地点</label>
+          <input id="fLoc" type="text" placeholder="例如：会通楼 518" data-page-node-id="4UlKCShRbkCTbwLS9Erpia" />
+        </div>
+        <div class="form-flex" data-page-node-id="uTIVpe6i6KqgAEiXloYY0f">
+          <div class="form-row" data-page-node-id="70kvzDFixeYFB6w3lDPgYW">
+            <label data-page-node-id="NFtXjltd9AceiWepSvglS8">周次（如 2-11 或 2,5-13）</label>
+            <input id="fWeeks" type="text" data-page-node-id="d1OG1RbHjIItN98pjKlhtw" />
+          </div>
+          <div class="form-row" data-page-node-id="OGpiQntkKPjqxZVW3vBUPE">
+            <label data-page-node-id="B9orhKmqQ0cmyF3blKhoff">节次（如 6-7）</label>
+            <input id="fSlots" type="text" data-page-node-id="y0JfecaNSxgCUomCMPyCPy" />
+          </div>
+        </div>
+        <div class="modal-actions" data-page-node-id="tsJVpiMPXFbaNlSHkfN94B">
+          <button class="btn ghost" id="addCancel" data-page-node-id="7kiZh8G9IRbgeup2weiRmF">取消</button>
+          <button class="btn primary" id="addConfirm" data-page-node-id="fSfEDPUpEnfHXVAxZNOPv2">添加</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- 修改课程弹窗 -->
-  <div class="modal-overlay" id="editOverlay">
-    <div class="modal-card">
-      <div class="modal-head">
-        <div class="mh-title">修改课程信息</div>
-        <div class="mh-sub">修改后，所有课表中该课程的教师 / 节次 / 学分 / 学时 / 教室 将自动同步</div>
+  <div class="modal-overlay" id="editOverlay" data-page-node-id="VZMfo2pOFbO4NJJAiDyb0Z">
+    <div class="modal-card" data-page-node-id="jBLMuYIqvXfg8EtWWMnNMO">
+      <div class="modal-head" data-page-node-id="NruquAvW2l8rBtasJuUYsy">
+        <div class="mh-title" data-page-node-id="bTYy94JGHNTCGoNpAH0Q0x">修改课程信息</div>
+        <div class="mh-sub" data-page-node-id="GCxFZS72rWatVQcPJCXPVo">修改后，所有课表中该课程的教师 / 节次 / 学分 / 学时 / 教室 将自动同步</div>
       </div>
-      <div class="modal-body">
-        <div class="form-row">
-          <label>课程名称</label>
-          <input id="eName" type="text" placeholder="课程名称" />
+      <div class="modal-body" data-page-node-id="FtzwJFCdmB1W93B3Kae8qF">
+        <div class="form-row" data-page-node-id="pFS7Q3d5ear0SZfRuKnLsZ">
+          <label data-page-node-id="nUrb8nUvE46jHTmDdSIgCA">课程名称</label>
+          <input id="eName" type="text" placeholder="课程名称" data-page-node-id="wPhgTc2r1oGFs1eJ0IiTjM" />
         </div>
-        <div class="form-flex">
-          <div class="form-row">
-            <label>课程代码</label>
-            <input id="eCode" type="text" placeholder="如 254101（可空）" />
+        <div class="form-flex" data-page-node-id="qJnUOW8XQw6QqlcKafeY6J">
+          <div class="form-row" data-page-node-id="Y5T1pbGq6M5lTfx22IJef3">
+            <label data-page-node-id="0QrRV5noETeiEDxKqGwImD">课程代码</label>
+            <input id="eCode" type="text" placeholder="如 254101（可空）" data-page-node-id="5TVcwxUwW7JCQ0exSE839S" />
           </div>
-          <div class="form-row">
-            <label>课程类型</label>
-            <select id="ePub">
-              <option value="false">选修课（可隐藏）</option>
-              <option value="true">公共课（不可隐藏）</option>
+          <div class="form-row" data-page-node-id="b7HGICcIsTgEOIAmZRDOGf">
+            <label data-page-node-id="C3iKzWC9MLg4e56WdnoBMK">课程类型</label>
+            <select id="ePub" data-page-node-id="bVu0lAWuNtloEaVEIAsr8R">
+              <option value="false" data-page-node-id="LZI7FisYlG7L75WBtDpcZU">选修课（可隐藏）</option>
+              <option value="true" data-page-node-id="x64mTiRCu7tsrXoylilDz2">公共课（不可隐藏）</option>
             </select>
           </div>
         </div>
-        <div class="form-flex">
-          <div class="form-row">
-            <label>授课教师（任课老师）</label>
-            <input id="eTeacher" type="text" placeholder="教师姓名" />
+        <div class="form-flex" data-page-node-id="DVmccDGbLNWSOk8BjGrvHD">
+          <div class="form-row" data-page-node-id="pD04t98OKO42u9cOMywwKW">
+            <label data-page-node-id="PpCFAXvLOKyfK5fjqJEsHO">授课教师（任课老师）</label>
+            <input id="eTeacher" type="text" placeholder="教师姓名" data-page-node-id="0oO3OjBA2sL3WiQCgdSJH3" />
           </div>
-          <div class="form-row" style="max-width:110px;">
-            <label>学分</label>
-            <input id="eCredit" type="number" min="0" max="20" step="0.5" value="2" />
+          <div class="form-row" style="max-width:110px;" data-page-node-id="PV0wSxVaUD0hhcSmAplsNN">
+            <label data-page-node-id="mnA2UtgsYVwq3SjRCWph82">学分</label>
+            <input id="eCredit" type="number" min="0" max="20" step="0.5" value="2" data-page-node-id="DCgBbIADBt1augALycMf8d" />
           </div>
-          <div class="form-row" style="max-width:110px;">
-            <label>学时</label>
-            <input id="eHours" type="number" min="0" max="200" step="1" placeholder="可空" />
+          <div class="form-row" style="max-width:110px;" data-page-node-id="714FuvUpLVjNWcaOdtOx3Q">
+            <label data-page-node-id="0CZFXRH4fNCCCuZEw0g5Tm">学时</label>
+            <input id="eHours" type="number" min="0" max="200" step="1" placeholder="可空" data-page-node-id="FtvZEY3jGE1UdNbnFHFdD8" />
           </div>
         </div>
-        <div class="form-row">
-          <label>排课明细（教师上课节次 / 教室，可逐条增删）</label>
-          <div class="se-head">
-            <span class="se-weeks">周次</span>
-            <span class="se-day">星期</span>
-            <span class="se-slots">节次</span>
-            <span class="se-loc">教室</span>
-            <span class="se-x"></span>
+        <div class="form-row" data-page-node-id="9nMpDAxg5RdGFzWJwmzWDP">
+          <label data-page-node-id="ftx5NsckrrWCoq1fp2DuH5">排课明细（教师上课节次 / 教室，可逐条增删）</label>
+          <div class="se-head" data-page-node-id="mIxo1WXQsrRLPZ5rhGobsM">
+            <span class="se-weeks" data-page-node-id="zjcTLpNdO5VMENP3A8LtU9">周次</span>
+            <span class="se-day" data-page-node-id="KrVcELMzEosBLWLsCcPz1m">星期</span>
+            <span class="se-slots" data-page-node-id="ItzIZAmWyE7osY4yimzZN6">节次</span>
+            <span class="se-loc" data-page-node-id="9p020q0TNYmsTyDd4HVBWn">教室</span>
+            <span class="se-x" data-page-node-id="d5nYvytEBk1VlUuSN64jL5"></span>
           </div>
-          <div id="eSlotsBox"></div>
-          <button type="button" class="e-add-slot" id="eAddSlot">＋ 添加排课</button>
+          <div id="eSlotsBox" data-page-node-id="sx8a5lH5np0x1CCQTHnoV0"></div>
+          <button type="button" class="e-add-slot" id="eAddSlot" data-page-node-id="tWWgvEBhmNhmDpDfVEzc54">＋ 添加排课</button>
         </div>
         <!-- 新增：电子书链接编辑（支持多条，选填） -->
-        <div class="form-row">
-          <label>电子书链接（可添加多条，选填；名称留空时默认显示「电子书链接」）</label>
-          <div id="eEbookBox"></div>
-          <button type="button" class="e-add-slot" id="eAddEbook">＋ 添加链接</button>
+        <div class="form-row" data-page-node-id="Qg7JfS7oHfBAhjiRcTHrgQ">
+          <label data-page-node-id="2fjWrjJMfaxYi1MDNO82GG">电子书链接（可添加多条，选填；名称留空时默认显示「电子书链接」）</label>
+          <div id="eEbookBox" data-page-node-id="bTc7RHEFGztzFYZhQY0cU9"></div>
+          <button type="button" class="e-add-slot" id="eAddEbook" data-page-node-id="VmCDAJJQikS5GoK3lETh6v">＋ 添加链接</button>
         </div>
-        <div class="modal-actions has-danger">
-          <button class="btn danger" id="editDeleteCourse" title="删除整门课程（含全部排课）">🗑 删除整门课程</button>
-          <div style="display:flex; gap:10px;">
-            <button class="btn ghost" id="editCancel">取消</button>
-            <button class="btn primary" id="editConfirm">保存修改</button>
+        <div class="modal-actions has-danger" data-page-node-id="K2skGfc475hBTvBvdy0GRQ">
+          <button class="btn danger" id="editDeleteCourse" title="删除整门课程（含全部排课）" data-page-node-id="elJqcFUyK19uaGzKXxFuRd">🗑 删除整门课程</button>
+          <div style="display:flex; gap:10px;" data-page-node-id="xXnATdHsXcq0ALClPduSll">
+            <button class="btn ghost" id="editCancel" data-page-node-id="OdFwofI74ye7wYbRnxBQmp">取消</button>
+            <button class="btn primary" id="editConfirm" data-page-node-id="VpdwI5HVheBWq0pvZ5vSUt">保存修改</button>
           </div>
         </div>
       </div>
@@ -802,73 +818,73 @@ body.editing .hdr-editable:hover { background: rgba(255,255,255,0.12); border-ra
   </div>
 
   <!-- 通用选项弹窗（合并/调换/删除确认 等） -->
-  <div class="modal-overlay" id="choiceOverlay">
-    <div class="modal-card">
-      <div class="modal-head" id="choiceHead">
-        <div class="mh-title" id="choiceTitle"></div>
-        <div class="mh-sub" id="choiceSub"></div>
+  <div class="modal-overlay" id="choiceOverlay" data-page-node-id="JqRIiR62v0cZeeqlO2P8j8">
+    <div class="modal-card" data-page-node-id="al4H8g0c2lWjgtComtMDWW">
+      <div class="modal-head" id="choiceHead" data-page-node-id="0PdVzEfom4ZzGi45d7cOOs">
+        <div class="mh-title" id="choiceTitle" data-page-node-id="xNjjI5RLWJpxmqrbWOjXym"></div>
+        <div class="mh-sub" id="choiceSub" data-page-node-id="gKliINbExE1mfwlzhZnnEL"></div>
       </div>
-      <div class="modal-body" id="choiceBody"></div>
+      <div class="modal-body" id="choiceBody" data-page-node-id="X2wQDZjpwcsS2h1kQL7uWi"></div>
     </div>
   </div>
 
   <!-- 管理密钥弹窗（进入编辑模式时验证） -->
-  <div class="modal-overlay" id="keyOverlay">
-    <div class="modal-card" style="max-width:380px;">
-      <div class="modal-head">
-        <div class="mh-title">管理员验证</div>
-        <div class="mh-sub" id="keyMsg">请输入管理密钥以启用编辑功能</div>
+  <div class="modal-overlay" id="keyOverlay" data-page-node-id="NFghsPg4eTRm8xmXQZ4ozt">
+    <div class="modal-card" style="max-width:380px;" data-page-node-id="DtNxQFp3m9EBdpNhRv7vow">
+      <div class="modal-head" data-page-node-id="fpeqxnD8ZBonid7p4ykAdG">
+        <div class="mh-title" data-page-node-id="7XzuCrx9hvC1bQQddA94kM">管理员验证</div>
+        <div class="mh-sub" id="keyMsg" data-page-node-id="RRX4tgiHbL4eBGqDpU3n1G">请输入管理密钥以启用编辑功能</div>
       </div>
-      <div class="modal-body">
-        <div class="form-row">
-          <label>管理密钥</label>
-          <input id="keyInput" type="password" placeholder="管理密钥（默认 fosu2026）" autocomplete="off">
-          <div id="keyErr" style="font-size:12px;color:#dc2626;margin-top:6px;min-height:16px;"></div>
+      <div class="modal-body" data-page-node-id="jxsUEi8LY24JnEuuNKOpfn">
+        <div class="form-row" data-page-node-id="pTowzMiRD02GQm5DSi006f">
+          <label data-page-node-id="gCePhwre6fzD3K2yHEbSry">管理密钥</label>
+          <input id="keyInput" type="password" placeholder="管理密钥（默认 fosu2026）" autocomplete="off" data-page-node-id="Y4m14N2scbMmddkM67wvdD">
+          <div id="keyErr" style="font-size:12px;color:#dc2626;margin-top:6px;min-height:16px;" data-page-node-id="0N9Y8JH1HjAkLw4nOLUs9U"></div>
         </div>
-        <div class="modal-actions">
-          <button class="btn ghost" id="keyCancel">取消</button>
-          <button class="btn primary" id="keyOk">验证并继续</button>
+        <div class="modal-actions" data-page-node-id="v3kSFGZuNeO3FWJa5dDmkw">
+          <button class="btn ghost" id="keyCancel" data-page-node-id="RkEgDuoktTPSangcBxiHmt">取消</button>
+          <button class="btn primary" id="keyOk" data-page-node-id="ErR3zLCiEfFV4RkhgkMW6m">验证并继续</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- 反馈管理弹窗（右上角「💬 反馈管理」入口，功能同 admin-feedback.html） -->
-  <div class="modal-overlay" id="fbOverlay">
-    <div class="modal-card fb-card">
-      <div class="modal-head fb-head">
-        <div>
-          <div class="mh-title">反馈管理</div>
-          <div class="mh-sub">数据存储于 Cloudflare D1 云端数据库 · 任意设备可见</div>
+  <div class="modal-overlay" id="fbOverlay" data-page-node-id="8Z14B0yeKwhKeVofiIXRHj">
+    <div class="modal-card fb-card" data-page-node-id="fUDmCJo2slBdBRUYC5fAHD">
+      <div class="modal-head fb-head" data-page-node-id="uFKaTRKAvJ3LMTYWBbBMGt">
+        <div data-page-node-id="Pj9Wo6zapn5lljlcvBuvKW">
+          <div class="mh-title" data-page-node-id="xDCCZq49Dn29V7qCCMVcA6">反馈管理</div>
+          <div class="mh-sub" data-page-node-id="XzAu61hhl2BBvnbav8mlHU">数据存储于 Cloudflare D1 云端数据库 · 任意设备可见</div>
         </div>
-        <button class="fb-head-x" id="fbHeadX" title="关闭">×</button>
+        <button class="fb-head-x" id="fbHeadX" title="关闭" data-page-node-id="TwgQN0eMGSTPRrjHKPKMJH">×</button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" data-page-node-id="lp1vRxa0xvEl06lZtog0ph">
         <!-- 密钥门（仅简单前端拦截；真实鉴权在后端 Bearer，密钥为 Pages 环境变量 ADMIN_API_KEY） -->
-        <div class="fb-gate" id="fbGate">
-          <p>请输入反馈管理密钥（ADMIN_API_KEY）</p>
-          <input type="password" id="fbKeyInput" placeholder="管理员密钥" autocomplete="off">
-          <br>
-          <button class="btn primary" id="fbKeyEnter">进入</button>
-          <div class="fb-gate-err" id="fbGateErr"></div>
+        <div class="fb-gate" id="fbGate" data-page-node-id="gAJ0FDDnqN8cDUSSxM7oRj">
+          <p data-page-node-id="fLdkAmTE7BNkwzb8ZXcqT1">请输入反馈管理密钥（ADMIN_API_KEY）</p>
+          <input type="password" id="fbKeyInput" placeholder="管理员密钥" autocomplete="off" data-page-node-id="mMr11MqHNtFOwkBgjIX22m">
+          <br data-page-node-id="HfPf62rHx2BGjEXdH8Svj6">
+          <button class="btn primary" id="fbKeyEnter" data-page-node-id="waObR1AOGwnI6NbdSGJP92">进入</button>
+          <div class="fb-gate-err" id="fbGateErr" data-page-node-id="aLCfUzj7ykohNRYyQgEiNu"></div>
         </div>
         <!-- 反馈列表区（进入后显示） -->
-        <div id="fbListArea" style="display:none">
-          <div class="fb-count" id="fbCount">加载中…</div>
+        <div id="fbListArea" style="display:none" data-page-node-id="HDKup2Hq4Je53l9y5oGCU6">
+          <div class="fb-count" id="fbCount" data-page-node-id="wxBNLGYz95TeTzv8RvHlAb">加载中…</div>
           <!-- 重要说明编辑器：保存后用户端反馈窗口 3 秒内实时同步 -->
-          <div class="fb-notice-editor">
-            <div class="fb-ne-title">重要说明（用户端反馈窗口顶部展示 · 保存后 3 秒内实时同步）</div>
+          <div class="fb-notice-editor" data-page-node-id="XiGcdysqXZbbelWs50HMPL">
+            <div class="fb-ne-title" data-page-node-id="qbEPpB8IGE3guSy9uxGjG2">重要说明（用户端反馈窗口顶部展示 · 保存后 3 秒内实时同步）</div>
             <textarea id="fbNoticeInput" rows="4" maxlength="500" placeholder="输入反馈窗口顶部显示的重要说明，留空则不显示"></textarea>
-            <button class="btn primary" id="fbNoticeSave" style="margin-top:8px;">保存重要说明</button>
-            <span class="fb-ne-hint" id="fbNoticeHint"></span>
+            <button class="btn primary" id="fbNoticeSave" style="margin-top:8px;" data-page-node-id="mw9owYH0hrhwSP4vAHCWw9">保存重要说明</button>
+            <span class="fb-ne-hint" id="fbNoticeHint" data-page-node-id="EGbHQlVg2Z8tzOVm1LxN2Z"></span>
           </div>
-          <div id="fbList"></div>
+          <div id="fbList" data-page-node-id="jsi9Hs1hJpuVcrWUN9yDrb"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast" data-page-node-id="UqGP8AQsnizcdRzPBsED5z"></div>
 
 <script>
 /* ===== 课程数据（内置兜底；正常从 /api/schedule 加载，编辑后保存回去） ===== */
@@ -1012,9 +1028,20 @@ function applyWeekConfig(arg) {
   if (sig === weekCfgSig) return;
   weekCfgSig = sig;
   WEEK_BASE = base;
-  if (typeof currentWeek !== "undefined") { currentWeek = loadWeekByTeaching(); saveWeek(); }
+  if (typeof currentWeek !== "undefined") {
+    if (!_initialRendered) {
+      /* 初始化阶段（此刻尚未渲染）：配置就绪后用最终展示范围重新确定浏览周 ——
+         localStorage 优先、无记录用默认起始周。尚未渲染，故不会产生任何闪烁。 */
+      const restored = loadWeek();
+      if (restored !== currentWeek) { currentWeek = restored; saveWeek(); }
+    } else {
+      /* 运行期：不打扰用户当前浏览，仅当越出新的展示范围时夹紧并回写 localStorage */
+      const fixed = Math.max(WEEK_START, Math.min(WEEK_END, currentWeek));
+      if (fixed !== currentWeek) { currentWeek = fixed; saveWeek(); }
+    }
+  }
 }
-/* 管理端：打开时同样按教学周定位，但不强制覆盖（管理员常需来回切周检查） */
+/* 管理端：保留原定位函数；方案B 后初始化不再强制跳转，改由 loadWeek 恢复上次浏览周 */
 function loadWeekByTeaching() {
   const auto = resolveInitialWeek();
   if (auto && auto >= WEEK_START && auto <= WEEK_END) return auto;
@@ -1230,10 +1257,12 @@ function clearWeekGridCache() {
   for (const k in _weekGridCache) delete _weekGridCache[k];
 }
 
-/* 周次记忆：优先读取本地 localStorage 中上次选择的周次；未记录则用默认起始周（WEEK_START）。
-   不再自动定位到“今天”所在周，由浏览器记住用户上一次点击的周次。 */
+/* 周次记忆：页面初始化只读取 localStorage 中上次浏览的周次并恢复；无记录则用起始教学周。
+   已彻底删除"打开即强制跳到真实教学周"的初始化跳转，避免两次渲染切换造成闪烁。 */
 const WEEK_KEY = "fosu_week";
 function loadWeek() {
+  /* 初始化只做一件事：读取 localStorage 中上次浏览的周次并直接恢复。
+     无记录时使用合理默认周次（起始教学周 WEEK_START）；不再推算真实教学周。 */
   try {
     const v = parseInt(localStorage.getItem(WEEK_KEY), 10);
     if (!isNaN(v) && v >= WEEK_START && v <= WEEK_END) return v;
@@ -1244,6 +1273,14 @@ function saveWeek() {
   try { localStorage.setItem(WEEK_KEY, String(currentWeek)); } catch (_) {}
 }
 let currentWeek = loadWeek();
+/* 手机端横滑容器：记录已定位过的浏览周。浏览周在此刻（渲染之前）已由 loadWeek() 同步确定，
+   横滑定位只跟随"浏览周是否变化"触发，避免重复 render 造成二次滚动。 */
+let _lastScrolledWeek = null;
+
+/* 初始化渲染守卫：false = 尚未完成首次渲染。
+   首次渲染前严格按 ① 拉全局配置 → ② 读 localStorage 定浏览周 → ③ 才渲染 的顺序执行，
+   因此"周次范围变更导致先渲染旧范围再重建 DOM"的二次渲染闪烁被彻底消除。 */
+let _initialRendered = false;
 
 /* ===== 详情面板 ===== */
 const overlay = document.getElementById("detailOverlay");
@@ -1847,9 +1884,21 @@ function render() {
   }
 
   // 手机端横滑容器：把当前选中周次滚动到可视区域中央
+  /* 浏览周已先于本渲染确定；此处只做定位：
+     - 浏览周发生变化 → 平滑滚动到中央（仅一次）
+     - 浏览周未变化（初始化重渲染 / 轮询）→ 瞬时复原位置，不产生二次滚动动画 */
   const _activeBtn = wb.querySelector(".week-btn.active");
-  if (_activeBtn && typeof _activeBtn.scrollIntoView === "function") {
-    _activeBtn.scrollIntoView({ inline: "center", block: "nearest" });
+  if (_activeBtn && _lastScrolledWeek !== currentWeek) {
+    _lastScrolledWeek = currentWeek;
+    /* 等周按钮 DOM 完全插入并完成布局后（下一帧）再执行滚动，避免滚动引发二次布局抖动 */
+    requestAnimationFrame(() => {
+      if (typeof _activeBtn.scrollIntoView === "function") {
+        _activeBtn.scrollIntoView({ inline: "center", block: "nearest" });
+      }
+    });
+  } else if (_activeBtn && typeof wb.scrollTo === "function") {
+    const _left = _activeBtn.offsetLeft - (wb.clientWidth - _activeBtn.offsetWidth) / 2;
+    wb.scrollTo({ left: Math.max(0, _left), behavior: "auto" });
   }
 
   document.getElementById("wkBig").textContent = `第 ${currentWeek} 周`;
@@ -2114,8 +2163,7 @@ async function loadSchedule() {
       NOTES = draft.notes || {};
       dataEdited = true;
       dirty = true;
-      renderLegend();
-      render();
+      if (_initialRendered) { renderLegend(); render(); }
       showToast("↩ 已恢复上次未保存的编辑（当前无法连接服务器，连接恢复后将自动保存）");
       scheduleRetry();
     } else {
@@ -2135,8 +2183,7 @@ async function loadSchedule() {
     rev = data.rev || 1;
     dataEdited = true;
     dirty = true;
-    renderLegend();
-    render();
+    if (_initialRendered) { renderLegend(); render(); }
     showToast("↩ 已恢复上次未保存的编辑，正在重新保存…");
     await save(true);
     return;
@@ -2160,8 +2207,7 @@ async function loadSchedule() {
     rev = data.rev || 1;
     syncedRev = rev;
     dataEdited = !!data.edited;
-    renderLegend();
-    render();
+    if (_initialRendered) { renderLegend(); render(); }
   }
 }
 
@@ -2177,10 +2223,14 @@ wkNoteInputEl.addEventListener("blur", () => {
   if (dirty) save(true);
 });
 
-renderLegend();
-render();
-loadSchedule();
-initTermConfig();   /* 新增：设置面板初始化（服务器不可达时按钮同样可用） */
+/* ===== 初始化时序（与用户端完全统一，严格三段式，全程只渲染一次）=====
+   ① 拉取全局配置（第 1 教学周基准 / 起止教学周 / 人数）
+   ② 同步读取 localStorage 得到上次浏览周并完成浏览周赋值（管理员端同样不再自动切到本周）
+   ③ 数据与状态全部就绪后，才渲染周次按钮列表与课表主体 */
+Promise.resolve(loadSchedule())
+  .catch(() => { /* 服务器不可达时仍继续渲染，使用内置默认数据 */ })
+  .then(() => { _initialRendered = true; renderLegend(); render(); });
+initTermConfig();   /* 设置面板初始化（服务器不可达时按钮同样可用） */
 </script>
 <script src="push.js"></script>
 <script>
