@@ -1286,8 +1286,11 @@ function render() {
         items.forEach(it => {
           const c = document.createElement("div");
           c.className = "course " + it.course.cls;
-          // 仅今日列：按节次从一次性计算的 TODAY_STATUS 映射取状态；其余列清空为普通样式
-          it.currentStatus = isTodayCol ? (TODAY_STATUS[it.slotNum] || "") : "";
+          /* 呼吸灯前置校验（Bug 修复）：必须"当前浏览周 === 系统推算的真实教学周"才允许点亮。
+             nowWeek = realCurrentTeachingWeek()（render 顶部已算好，此处直接复用，不重复计算）。
+             浏览其它周次时，无论现实时间是否命中课程时间段，一律关闭正在上课 / 即将上课的
+             呼吸灯、标签与高亮样式。 */
+          it.currentStatus = (isTodayCol && currentWeek === nowWeek) ? (TODAY_STATUS[it.slotNum] || "") : "";
           if (it.currentStatus) c.classList.add("status-" + it.currentStatus); // status-studying / status-comingSoon
           const badgeText =
             it.currentStatus === "studying" ? "正在上课" :
