@@ -278,11 +278,11 @@ body.editing .hdr-editable:hover { background: rgba(255,255,255,0.12); border-ra
 
   /* 通用选项弹窗按钮 */
   .opt-btn {
-    display: block; width: 100%; margin-bottom: 10px;
+    display: block; width: 100%; margin-bottom: 10px; box-sizing: border-box;
     border: 1px solid var(--line); background: #fff; color: var(--ink);
     border-radius: 12px; padding: 14px 16px; font-size: 14px; font-weight: 600;
     cursor: pointer; text-align: left; transition: all 0.15s; font-family: inherit;
-    line-height: 1.5;
+    line-height: 1.5; white-space: normal; word-break: break-word;
   }
   .opt-btn:hover { border-color: var(--primary); background: #f8fafc; transform: translateY(-1px); }
   .opt-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
@@ -1473,19 +1473,26 @@ function doSwapMove(slot, targetDay, targetStart) {
   return moved + 1;
 }
 
-/* 整列拖拽：合并 = 源列课程全部并入目标列；调换 = 两列课程整体互换 */
+/* 整列拖拽：合并 = 源列课程并入目标列；调换 = 两列课程整体互换。
+   原「所有周次」逻辑（mergeColumn / swapColumn）保持不变，仅新增「仅当前周」分支。 */
 function handleColumnDrop(sourceDay, targetDay) {
   if (sourceDay === targetDay) return;
   const srcName = DAYS[sourceDay - 1], tgtName = DAYS[targetDay - 1];
-  openChoice("整列拖拽", `从「${srcName}」拖到「${tgtName}」，请选择处理方式：`, [
-    { label: `合并：把 ${srcName} 的课程并入 ${tgtName}（${srcName} 清空）`, value: "merge", style: "primary" },
-    { label: `调换：${srcName} 与 ${tgtName} 两列课程整体互换`, value: "swap", style: "accent" },
+  const wk = currentWeek;
+  openChoice(`整列拖拽 从「${srcName}」拖到「${tgtName}」，请选择处理方式：`, "", [
+    { label: `所有周次‑合并：把 ${srcName} 的课程并入 ${tgtName}（${srcName} 清空）`, value: "mergeAll", style: "primary" },
+    { label: `所有周次‑调换：${srcName} 与 ${tgtName} 两列课程整体互换`, value: "swapAll", style: "accent" },
+    { label: `仅当前周‑合并：把 ${srcName} 课程并入 ${tgtName}（仅当前浏览第${wk}周，${srcName} 清空）`, value: "mergeWeek", style: "primary" },
+    { label: `仅当前周‑调换：${srcName} 与 ${tgtName} 两列课程整体互换（仅当前浏览第${wk}周）`, value: "swapWeek", style: "accent" },
     { label: "取消", value: "cancel", style: "ghost" }
   ]).then(mode => {
-    if (mode === "merge") mergeColumn(sourceDay, targetDay);
-    else if (mode === "swap") swapColumn(sourceDay, targetDay);
+    if (mode === "mergeAll") mergeColumn(sourceDay, targetDay);
+    else if (mode === "swapAll") swapColumn(sourceDay, targetDay);
+    else if (mode === "mergeWeek") mergeColumnWeek(sourceDay, targetDay, wk);
+    else if (mode === "swapWeek") swapColumnWeek(sourceDay, targetDay, wk);
   });
 }
+/* ===== 以下 mergeColumn / swapColumn 为原有「所有周次」逻辑，保持不变 ===== */
 function mergeColumn(sourceDay, targetDay) {
   let moved = 0;
   COURSES.forEach(c => {
@@ -1502,6 +1509,69 @@ function swapColumn(dayA, dayB) {
     });
   });
   afterEdit(`已调换：${DAYS[dayA-1]} ⇄ ${DAYS[dayB-1]} 两列课程整体互换`);
+}
+
+/* ===== 新增：「仅当前周」整列操作（只动当前浏览周，其余周完全隔离）=====
+   数据模型是「slot.day + slot.weeks 区间」，没有逐周星期字段；因此「仅当前周」不能
+   直接改 day（那会影响整段 weeks），而是把当前周 W 从源 slot 的 weeks 区间中切出，
+   在目标 day 上新增一条仅含 [W,W] 的 slot；源 slot 的其余周保留，互不影响。 */
+function removeWeekFromRanges(ranges, W) {
+  let hit = false;
+  const out = [];
+  for (const [a, b] of (ranges || [])) {
+    if (W < a || W > b) { out.push([a, b]); continue; }
+    hit = true;
+    if (W > a) out.push([a, W - 1]);
+    if (W < b) out.push([W + 1, b]);
+  }
+  return { weeks: out, hit };
+}
+/* 仅当前周‑合并：源列当前周课程并入目标列，该周源列清空；其余周不动 */
+function mergeColumnWeek(sourceDay, targetDay, week) {
+  let moved = 0;
+  COURSES.forEach(c => {
+    const additions = [], toRemove = new Set();
+    c.slots.forEach((s, i) => {
+      if (s.day !== sourceDay) return;
+      const { weeks, hit } = removeWeekFromRanges(s.weeks, week);
+      if (!hit) return;
+      moved++;
+      s.weeks = weeks;                                  // 源 slot 切掉当前周
+      const ns = JSON.parse(JSON.stringify(s));          // 目标列新增仅含当前周的同款排课
+      ns.day = targetDay; ns.weeks = [[week, week]];
+      additions.push(ns);
+      if (weeks.length === 0) toRemove.add(i);          // 源 slot 仅剩当前周 → 整条移除
+    });
+    if (additions.length) c.slots.push(...additions);
+    if (toRemove.size) c.slots = c.slots.filter((_, i) => !toRemove.has(i));
+  });
+  COURSES = COURSES.filter(c => c.slots.length > 0);
+  afterEdit(`已合并（仅第${week}周）：${DAYS[sourceDay-1]} → ${DAYS[targetDay-1]}（移动 ${moved} 个排课，该周源列已清空）`);
+}
+/* 仅当前周‑调换：仅交换当前浏览周内两列课程，其余周保持原样 */
+function swapColumnWeek(dayA, dayB, week) {
+  let moved = 0;
+  COURSES.forEach(c => {
+    const additions = [], toRemove = new Set();
+    c.slots.forEach((s, i) => {
+      let target = null;
+      if (s.day === dayA) target = dayB;
+      else if (s.day === dayB) target = dayA;
+      else return;
+      const { weeks, hit } = removeWeekFromRanges(s.weeks, week);
+      if (!hit) return;
+      moved++;
+      s.weeks = weeks;                                  // 原 slot 切掉当前周
+      const ns = JSON.parse(JSON.stringify(s));
+      ns.day = target; ns.weeks = [[week, week]];
+      additions.push(ns);
+      if (weeks.length === 0) toRemove.add(i);
+    });
+    if (additions.length) c.slots.push(...additions);
+    if (toRemove.size) c.slots = c.slots.filter((_, i) => !toRemove.has(i));
+  });
+  COURSES = COURSES.filter(c => c.slots.length > 0);
+  afterEdit(`已调换（仅第${week}周）：${DAYS[dayA-1]} ⇄ ${DAYS[dayB-1]}（仅当前浏览周互换，其余周不变）`);
 }
 
 /* 删除排课：删掉一条 slot；课程没有排课后整门删除（自定义确认弹窗，兼容嵌入式预览） */
