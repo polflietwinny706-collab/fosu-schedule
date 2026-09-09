@@ -1312,14 +1312,34 @@ function render() {
 
 /* ===== 新增（响应式改造 A-Plus）：手机端"显示周六、周日"复选框 =====
    仅切换 .grid 的 .show-weekend 类来控制第7/8列(周六、周日)显隐与 .grid-wrap 局部横向滚动；
-   不重新请求后端、不重新渲染课表、不改动任何原有业务逻辑与隐藏过滤逻辑。 */
+   不重新请求后端、不重新渲染课表、不改动任何原有业务逻辑与隐藏过滤逻辑。
+   ===== 新增（勾选状态持久化）：localStorage key = "showWeekend"，值 "true" / "false"；
+   刷新页面 / 关闭重开自动恢复上次选择；无记录时用下方 DEFAULT_ON 默认值。 ===== */
 (function bindWeekendToggle() {
+  const STORE_KEY = "showWeekend";
+  const DEFAULT_ON = true;   // 无记录时的默认值：true = 勾选（显示周六、周日）
   const chk = document.getElementById("showWeekendChk");
   const grid = document.getElementById("grid");
   if (!chk || !grid) return;
-  chk.addEventListener("change", () => {
-    if (chk.checked) grid.classList.add("show-weekend");
+
+  /* 应用状态到课表：仅增删 .show-weekend 类，显隐规则与原有渲染逻辑完全一致 */
+  function applyWeekend(on) {
+    if (on) grid.classList.add("show-weekend");
     else grid.classList.remove("show-weekend");
+  }
+
+  /* 初始化：优先读取 localStorage；无记录则使用默认值 */
+  let initial = DEFAULT_ON;
+  try {
+    const saved = localStorage.getItem(STORE_KEY);
+    if (saved !== null) initial = (saved === "true");
+  } catch (_) {}
+  chk.checked = initial;
+  applyWeekend(initial);
+
+  chk.addEventListener("change", () => {
+    applyWeekend(chk.checked);
+    try { localStorage.setItem(STORE_KEY, chk.checked ? "true" : "false"); } catch (_) {}
   });
 })();
 

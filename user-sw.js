@@ -1,5 +1,5 @@
 // 用户端 Service Worker：离线缓存外壳 + 接收系统推送通知
-const CACHE = "fosu-user-v2";
+const CACHE = "fosu-user-v3";
 const PRECACHE = ["/user.html", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (e) => {
