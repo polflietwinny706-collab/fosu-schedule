@@ -523,6 +523,103 @@
     .week-bar { min-height: 140px; }
     .grid-wrap { min-height: 700px; }
   }
+
+  /* ===== 新增：一键打印本周课表（仅新增打印相关样式，不改动任何现有屏幕样式/业务逻辑） =====
+     打印时只保留：学期标题、周次文字、本周课程表；隐藏按钮、呼吸灯、滚动栏、弹窗等。 */
+  .print-head { display: none; }        /* 屏幕上隐藏，仅打印时显示 */
+  #printWeekBtn { white-space: nowrap; }
+  /* 新增：快捷区按钮允许换行，手机窄屏加入「打印本周」后不会横向溢出（桌面端空间充足，表现不变） */
+  .week-bar .quick { flex-wrap: wrap; }
+
+  @media print {
+    /* ===== 单页 A4 适配：优先压缩间距 / 单元格 padding，其次适度缩小字号（保证可读） ===== */
+    @page { size: A4 portrait; margin: 8mm; }   /* 边距 12mm→8mm，多留出约 8mm 纵向空间 */
+
+    /* 隐藏不需要打印的元素：浮动按钮、周次切换栏、周末开关、统计卡、图例、页脚、各类弹窗遮罩 */
+    .top-actions, .feedback-fab, .hide-toggle,
+    .week-bar, .weekend-toggle, .meta-card, .legend, .footer,
+    .detail-overlay, .hide-overlay, .fb-overlay { display: none !important; }
+
+    /* 整体：纯白背景，去掉页面多余留白 */
+    html, body { background: #fff !important; color: #000 !important; margin: 0 !important; }
+    .container { max-width: none !important; padding: 0 !important; margin: 0 !important; }
+
+    /* 打印抬头：压缩外边距与内边距 */
+    .print-head {
+      display: block !important;
+      margin: 0 0 4px; padding: 0 0 3px;
+      border-bottom: 1px solid #333;
+      font-size: 12px; line-height: 1.2; font-weight: 700; color: #000; text-align: center;
+    }
+    .print-head .ph-sub { display: block; margin-top: 1px; font-size: 10px; font-weight: 500; color: #444; }
+    .print-head.no-course .ph-sub { color: #000; font-weight: 700; }
+
+    /* 页头：去掉渐变背景与阴影，纯黑白 + 紧凑（缩小字号与行距） */
+    .header {
+      background: #fff !important; box-shadow: none !important; color: #000 !important;
+      margin: 0 0 4px !important; padding: 0 0 3px !important; text-align: center;
+    }
+    .header .school { font-size: 11px !important; color: #000 !important; margin: 0 !important; line-height: 1.2 !important; }
+    .header .title  { font-size: 15px !important; color: #000 !important; margin: 1px 0 2px !important; line-height: 1.2 !important; }
+    .header .subtitle { font-size: 10px !important; color: #000 !important; margin: 0 !important; line-height: 1.2 !important; }
+
+    /* 课表容器：去阴影/背景/圆角/最小高度占位，取消横向滚动 */
+    .grid-wrap {
+      background: #fff !important; box-shadow: none !important;
+      padding: 0 !important; margin: 0 !important; border-radius: 0 !important;
+      overflow: visible !important; min-height: 0 !important; max-height: none !important;
+    }
+    .grid {
+      min-width: 0 !important; width: 100% !important;
+      grid-template-columns: 40px repeat(7, minmax(0, 1fr)) !important;   /* 节次列 46→40px */
+      gap: 0 !important;
+    }
+    /* 保证周六、周日两列在打印时始终完整输出（不受手机端「显示周六、周日」开关影响） */
+    .grid > .gh:nth-child(8n+7), .grid > .gh:nth-child(8n+8) { display: block !important; }
+    .grid > .gc:nth-child(8n+7), .grid > .gc:nth-child(8n+8) { display: flex !important; }
+
+    /* 单元格：压缩高度与内边距（第一优先），细线表格 */
+    .gh, .gc {
+      background: #fff !important; color: #000 !important;
+      border: 1px solid #999 !important; border-radius: 0 !important;
+      box-shadow: none !important;
+      min-height: 20px !important; height: auto !important;         /* 38→20px，压缩行高冗余 */
+      padding: 1px 2px !important; line-height: 1.15 !important;     /* 3→1px，精简内边距 */
+      overflow: visible !important; break-inside: avoid;
+    }
+    .gh { font-weight: 700 !important; text-align: center !important; font-size: 10px !important; padding: 1px !important; }
+    .gh .date-tag { font-size: 8px !important; line-height: 1.1 !important; }
+    .gh.time-header, .gc.time-cell { background: #f0f0f0 !important; }
+    .gc.time-cell { padding: 0 2px !important; }
+    .gc.time-cell .slot-num { font-size: 9.5px !important; line-height: 1.1 !important; }
+    .gc.time-cell .slot-time { font-size: 8.5px !important; line-height: 1.1 !important; }
+    .gc.empty-cell { color: #bbb !important; font-size: 9px !important; }
+
+    /* 课程卡片：黑白 + 紧凑（减小 padding / 行高 / 字号，但保持可读） */
+    .course {
+      background: #fff !important; color: #000 !important;
+      border: 1px solid #333 !important; border-radius: 2px !important;
+      box-shadow: none !important; animation: none !important; transform: none !important;
+      padding: 1px 2px !important; height: auto !important; min-height: 0 !important;
+      line-height: 1.15 !important; gap: 0 !important; break-inside: avoid;
+    }
+    .course .name { font-size: 10.5px !important; font-weight: 700 !important; color: #000 !important; margin-bottom: 0 !important; line-height: 1.15 !important; }
+    .course .loc, .course .teacher { font-size: 9px !important; color: #333 !important; opacity: 1 !important; line-height: 1.15 !important; }
+    .course .tap-hint { display: none !important; }
+
+    /* 课程文字自动换行，绝不截断课程名 */
+    .course .name, .course .loc, .course .teacher {
+      white-space: normal !important; overflow: visible !important;
+      word-break: break-word !important; overflow-wrap: anywhere !important;
+      text-overflow: clip !important;
+    }
+
+    /* 隐藏呼吸灯相关：状态徽标（正在上课/即将上课）与描边光环 */
+    .course .status-badge { display: none !important; }
+    .course.status-studying, .course.status-comingSoon {
+      box-shadow: none !important; animation: none !important;
+    }
+  }
 </style>
 </head>
 <body data-page-node-id="9tDEKDRjgdvrsvTwSpIfBu">
@@ -540,6 +637,11 @@
   </header>
 
   <main class="container" data-page-node-id="v7AYzQHkc0fqUHphvleKRT">
+    <!-- ===== 新增（打印）：打印专用抬头。屏幕上隐藏；打印时显示「第 X 周 · 共 N 节课 / 本周无课程」 ===== -->
+    <div class="print-head" id="printHead">
+      <span id="printHeadWeek">第 2 周</span>
+      <span class="ph-sub" id="printHeadSub">共 0 节课</span>
+    </div>
     <div class="week-bar" data-page-node-id="ziFhMv0FLVL4D8cTlqAClU">
       <span class="label" data-page-node-id="tARlyTenvDrKT0ggJJfZxb">选择周次</span>
       <div id="weekButtons" data-page-node-id="KRvIiUiu1XKr58P2ILSpBI"></div>
@@ -547,6 +649,7 @@
         <button class="quick-btn" data-act="prev" data-page-node-id="ZOEoNeLS0kAp0Dl5UF5w1Y">← 上一周</button>
         <button class="quick-btn" data-act="next" data-page-node-id="DoJEI3Ac1XBVHITggYh0Si">下一周 →</button>
         <button class="quick-btn" data-act="reset" data-page-node-id="rRKg3TT44itnaJ0khDjS1q">回到本周</button>
+        <button class="quick-btn" id="printWeekBtn" title="打印当前正在浏览的这一周课表">打印本周</button>
       </div>
     </div>
 
@@ -1340,6 +1443,28 @@ function render() {
   chk.addEventListener("change", () => {
     applyWeekend(chk.checked);
     try { localStorage.setItem(STORE_KEY, chk.checked ? "true" : "false"); } catch (_) {}
+  });
+})();
+
+/* ===== 新增：一键打印本周课表 =====
+   仅读取页面上已渲染好的当前浏览周信息（全局 currentWeek + #wkCount 文本），
+   不改动任何现有渲染与业务逻辑；点击后直接唤起浏览器原生打印弹窗。
+   周次与节数都在「点击瞬间」按当前状态写入打印抬头，
+   因此切换到任意周次后再打印，输出的永远是当前选中周次的课表。
+   当前周无课程时，课表空白网格照常打印，抬头标注「本周无课程」。 */
+(function bindPrintWeek() {
+  const btn = document.getElementById("printWeekBtn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const head = document.getElementById("printHead");
+    const weekEl = document.getElementById("printHeadWeek");
+    const subEl = document.getElementById("printHeadSub");
+    const cntEl = document.getElementById("wkCount");
+    const n = parseInt((cntEl && cntEl.textContent) || "0", 10) || 0;
+    if (weekEl) weekEl.textContent = `第 ${currentWeek} 周`;
+    if (subEl) subEl.textContent = n > 0 ? `共 ${n} 节课` : "本周无课程";
+    if (head) head.classList.toggle("no-course", n === 0);
+    window.print();
   });
 })();
 
