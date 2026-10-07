@@ -51,6 +51,10 @@
   }
   .title { font-size: 26px; font-weight: 700; margin: 4px 0 6px; letter-spacing: 0.02em; }
   .subtitle { font-size: 13px; opacity: 0.9; }
+.hdr-editable { border-bottom: 1px dashed transparent; }
+body.editing .hdr-editable { cursor: text; border-bottom: 1px dashed rgba(255,255,255,0.6); }
+body.editing .hdr-editable:hover { background: rgba(255,255,255,0.12); border-radius: 4px; }
+.inline-edit-input { font: inherit; color: #1e1b4b; background: #fff; border: 1px solid #c7d2fe; border-radius: 6px; padding: 1px 6px; min-width: 40px; }
   .container { max-width: 1280px; margin: 0 auto; padding: 22px 24px 60px; }
 
   /* 左上角编辑按钮 */
@@ -572,7 +576,7 @@
     <div class="header-inner">
       <div class="school"><span id="appSubtitle">佛山大学 · 2026 年秋季学期</span> <span class="admin-badge">管理员</span></div>
       <div class="title" id="appTitle">26 级数学专业 研究生周课表</div>
-      <div class="subtitle">第 2 周 — 第 18 周 · 共 21 人 · 8 门课程</div>
+      <div class="subtitle"><span id="hdrWeekRange">第 2 周 — 第 18 周</span> · <span id="hdrPeople" class="hdr-editable">共 21 人</span> · <span id="hdrCourseCount">8 门课程</span></div>
     </div>
   </header>
 
@@ -580,24 +584,12 @@
     <div class="edit-hint">
       <b>编辑模式已开启：</b>① 拖动课程卡片到任意格子，选「合并/调换」处理（含全部周次，节次块长度不变）；
       ② 拖动列顶表头到另一列，可整列「合并/调换」；③ 点击带 <b>＋</b> 的空格子添加课程；
-      ④ 点课程卡片右上角 <b>×</b> 删除该排课（课程无排课后整门删除）；⑤ 上方输入框可修改<b>网站标题</b>与<b>小标题</b>（大标题上方那行）；
+      ④ 点课程卡片右上角 <b>×</b> 删除该排课（课程无排课后整门删除）；⑤ 点击页头第 1/2 行文字可<b>原地修改网站标题与小标题</b>，点击第 3 行「共XX人」可改人数；
       ⑥ 点击底部课程图例中的任意课程卡片，弹出修改面板：可改教师 / 节次 / 学分 / 学时 / 教室 / 课程类型（公共课/选修课），也可一键删除整门课程。
       每次修改自动保存，用户网页 3 秒内自动同步。
     </div>
 
-    <!-- 网站标题编辑（仅编辑模式可见） -->
-    <div class="title-edit">
-      <span class="te-label">网站标题</span>
-      <input type="text" id="titleInput" maxlength="40" placeholder="输入课表标题，回车或点保存生效" autocomplete="off">
-      <button class="te-save" id="titleSaveBtn">保存标题</button>
-    </div>
-
-    <!-- 网站小标题（副标题）编辑（仅编辑模式可见） -->
-    <div class="title-edit">
-      <span class="te-label">小标题</span>
-      <input type="text" id="subtitleInput" maxlength="60" placeholder="输入大标题上方的小标题（如：佛山大学 · 2026 年秋季学期）" autocomplete="off">
-      <button class="te-save" id="subtitleSaveBtn">保存小标题</button>
-    </div>
+    <!-- 头部标题已改为原地内联编辑，下方不再保留独立表单 -->
 
     <div class="week-bar">
       <span class="label">选择周次</span>
@@ -631,11 +623,22 @@
       <h3>学期设置</h3>
 
       <div class="form-row" style="margin-bottom:16px;">
-        <label>教学第二周起始日期（须为该周周一）</label>
+        <label>本学期第 1 教学周起始公历日期（须为该周周一）</label>
         <div class="cfg-line">
           <input type="date" id="weekBaseInput" />
           <button class="btn primary" id="weekBaseSaveBtn">保存基准日期</button>
           <span class="cfg-hint" id="weekBaseHint"></span>
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-bottom:16px;">
+        <label>展示周次范围（起始教学周 — 结束教学周）</label>
+        <div class="cfg-line">
+          <input type="number" id="weekStartInput" min="1" max="30" style="width:72px;" />
+          <span>—</span>
+          <input type="number" id="weekEndInput" min="1" max="30" style="width:72px;" />
+          <button class="btn primary" id="weekRangeSaveBtn">保存周次范围</button>
+          <span class="cfg-hint" id="weekRangeHint"></span>
         </div>
       </div>
     </div>
@@ -916,16 +919,21 @@ function ensurePub(c) {
   return c;
 }
 
-const WEEK_MIN = 2;
-const WEEK_MAX = 18;
+/* ===== 教学周配置（与 user.html 完全一致） =====
+   本学期第 1 教学周起始公历日期：时间基准，用来推算"现实现在是第几教学周"。
+   起始教学周 / 结束教学周：仅控制课表界面展示的周次范围，与基准日期相互独立。 */
+const WEEK_BASE_OFFSET = 1;            // WEEK_BASE 对应第 1 教学周
+let WEEK_START = 2;                    // 起始教学周（展示范围，可配置）
+let WEEK_END = 18;                     // 结束教学周（展示范围，可配置）
+let HEAD_COUNT = 21;                   // 共修读人数（可配置，"共XX人"）
 
-/* ===== 配置：教学第二周起始日期（与 user.html 完全一致） =====
-   默认值沿用历史硬编码基准（2026-09-14 = 第2周周一），保证无配置时行为与改动前完全一致。 */
-const DEFAULT_WEEK_BASE = "2026-09-14";
-let WEEK_BASE = DEFAULT_WEEK_BASE;   // "YYYY-MM-DD"，第2周周一
+/* ===== 配置：本学期第 1 教学周起始公历日期（由管理员后台配置，随课表数据下发） =====
+   默认沿用：2026-09-14 是第 2 教学周周一 ⇒ 第 1 教学周周一为 2026-09-07。 */
+const DEFAULT_WEEK_BASE = "2026-09-07";
+let WEEK_BASE = DEFAULT_WEEK_BASE;   // "YYYY-MM-DD"，第 1 教学周周一
 
-/* 兼容旧引用 */
-const BASE_DATE = new Date(2026, 8, 14);
+/* 兼容旧引用：BASE_DATE 仍指向默认基准（只读语义），真正生效的是 WEEK_BASE */
+const BASE_DATE = new Date(2026, 8, 7);
 
 /* ===== 全局公共教学周计算层（与 user.html 完全一致，禁止各处独立实现） ===== */
 function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
@@ -947,10 +955,10 @@ function mondayOf(d) {
   const t = startOfDay(d);
   return addDays(t, -((t.getDay() + 6) % 7));
 }
-/* 真实日期 → 该用第几周的课（仅 base + 自然日历） */
+/* 真实日期 → 该用第几周的课（仅 base + 自然日历，无放假处理） */
 function teachWeekOf(realDate) {
   const base = parseYMD(WEEK_BASE) || BASE_DATE;
-  return Math.round((mondayOf(realDate) - mondayOf(base)) / (7 * 86400000)) + WEEK_MIN;
+  return Math.round((mondayOf(realDate) - mondayOf(base)) / (7 * 86400000)) + WEEK_BASE_OFFSET;
 }
 /* 真实日期 → 该用星期几(1-7) 的课（自然日历直推） */
 function teachDayOf(realDate) {
@@ -965,34 +973,42 @@ function computeTeachingWeek(today) {
   if (targetMonday < baseMonday) {
     return { week: null, valid: false, beforeTerm: true };
   }
-  const n = Math.round((targetMonday - baseMonday) / (7 * 86400000)) + WEEK_MIN;
-  return { week: n, valid: n >= WEEK_MIN && n <= WEEK_MAX };
+  const n = Math.round((targetMonday - baseMonday) / (7 * 86400000)) + WEEK_BASE_OFFSET;
+  return { week: n, valid: n >= WEEK_START && n <= WEEK_END };
 }
 function getWeekDate(week, day) {
   const base = parseYMD(WEEK_BASE) || BASE_DATE;
   const monday = mondayOf(base);
-  return addDays(monday, (week - WEEK_MIN) * 7 + ((day || 1) - 1));
+  return addDays(monday, (week - WEEK_BASE_OFFSET) * 7 + ((day || 1) - 1));
 }
 function formatDateDisplay(date) {
   return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 function resolveInitialWeek() {
   const r = computeTeachingWeek(new Date());
-  if (r.beforeTerm) return WEEK_MIN;
-  if (r.week == null) return WEEK_MIN;
-  return Math.max(WEEK_MIN, Math.min(WEEK_MAX, r.week));
+  if (r.beforeTerm) return WEEK_START;
+  if (r.week == null) return WEEK_START;
+  return Math.max(WEEK_START, Math.min(WEEK_END, r.week));
 }
 /* 全局固定「真实当前教学周」（本周角标用） */
 function realCurrentTeachingWeek() {
   const r = computeTeachingWeek(new Date());
-  if (r.week == null) return WEEK_MIN;
-  return Math.max(WEEK_MIN, Math.min(WEEK_MAX, r.week));
+  if (r.week == null) return WEEK_START;
+  return Math.max(WEEK_START, Math.min(WEEK_END, r.week));
 }
-/* 配置应用：基准变更才重定位；签名一致则不打扰 */
+/* 配置应用：基准/展示范围/人数变更才重定位；签名一致则不打扰 */
 let weekCfgSig = null;
-function applyWeekConfig(baseDate) {
-  const base = (typeof baseDate === "string" && parseYMD(baseDate)) ? baseDate : DEFAULT_WEEK_BASE;
-  const sig = "WEEK_BASE=" + base;
+function applyWeekConfig(arg) {
+  const data = (arg && typeof arg === "object") ? arg : { weekBase: (typeof arg === "string" ? arg : null) };
+  /* 兼容迁移：旧字段 weekBase（第2周周一）→ week1Base（第1周周一），减 7 天 */
+  let w1 = null;
+  if (data.week1Base && parseYMD(data.week1Base)) w1 = data.week1Base;
+  else if (data.weekBase && parseYMD(data.weekBase)) w1 = toYMD(addDays(parseYMD(data.weekBase), -7));
+  const base = (typeof w1 === "string" && parseYMD(w1)) ? w1 : DEFAULT_WEEK_BASE;
+  if (typeof data.weekStart === "number") WEEK_START = data.weekStart;
+  if (typeof data.weekEnd === "number") WEEK_END = data.weekEnd;
+  if (typeof data.headCount === "number") HEAD_COUNT = data.headCount;
+  const sig = "W1=" + base + "|WS=" + WEEK_START + "|WE=" + WEEK_END + "|HC=" + HEAD_COUNT;
   if (sig === weekCfgSig) return;
   weekCfgSig = sig;
   WEEK_BASE = base;
@@ -1001,8 +1017,8 @@ function applyWeekConfig(baseDate) {
 /* 管理端：打开时同样按教学周定位，但不强制覆盖（管理员常需来回切周检查） */
 function loadWeekByTeaching() {
   const auto = resolveInitialWeek();
-  if (auto && auto >= WEEK_MIN && auto <= WEEK_MAX) return auto;
-  return WEEK_MIN;
+  if (auto && auto >= WEEK_START && auto <= WEEK_END) return auto;
+  return WEEK_START;
 }
 
 function weekInRanges(week, ranges) {
@@ -1075,46 +1091,99 @@ function promptAdminKey(msg) {
   });
 }
 
-/* ===== 标题：应用与保存 ===== */
+/* ===== 标题：应用与保存（原地内联编辑，无独立表单） ===== */
 function applyTitle(t) {
   if (typeof t === "string" && t.trim()) SITE_TITLE = t.trim();
   const el = document.getElementById("appTitle");
-  if (el) el.textContent = SITE_TITLE;
-  const tab = SITE_TITLE + " · 管理员版（第2-18周）";
+  if (el && el.textContent !== SITE_TITLE) el.textContent = SITE_TITLE;
+  const tab = SITE_TITLE + " · 管理员版";
   if (document.title !== tab) document.title = tab;
-  const inp = document.getElementById("titleInput");
-  if (inp && document.activeElement !== inp && inp.value !== SITE_TITLE) inp.value = SITE_TITLE;
+}
+async function commitTitle(v) {
+  v = (v || "").trim();
+  if (!v) { showToast("标题不能为空"); return; }
+  if (v === SITE_TITLE) return;
+  SITE_TITLE = v; applyTitle(); dirty = true; await save();
 }
 
-async function saveTitle() {
-  const inp = document.getElementById("titleInput");
-  const v = (inp ? inp.value : "").trim();
-  if (!v) { showToast("标题不能为空"); if (inp) inp.value = SITE_TITLE; return; }
-  if (v === SITE_TITLE) { showToast("标题未变化"); return; }
-  SITE_TITLE = v;
-  applyTitle();
-  dirty = true;
-  await save();
-}
-
-/* ===== 小标题（副标题）：应用与保存，与主标题一致的交互 ===== */
+/* ===== 小标题（副标题）：应用与保存，与主标题一致 ===== */
 function applySubtitle(s) {
-  // 仅当传入字符串时更新（允许显式空串 = 清空小标题）；undefined 时保留当前值
   if (typeof s === "string") SITE_SUBTITLE = s.trim();
   const el = document.getElementById("appSubtitle");
-  if (el) el.textContent = SITE_SUBTITLE;
-  const inp = document.getElementById("subtitleInput");
-  if (inp && document.activeElement !== inp && inp.value !== SITE_SUBTITLE) inp.value = SITE_SUBTITLE;
+  if (el && el.textContent !== SITE_SUBTITLE) el.textContent = SITE_SUBTITLE;
+}
+async function commitSubtitle(v) {
+  v = (v || "").trim();
+  if (v === SITE_SUBTITLE) return;
+  SITE_SUBTITLE = v; applySubtitle(); dirty = true; await save();
 }
 
-async function saveSubtitle() {
-  const inp = document.getElementById("subtitleInput");
-  const v = (inp ? inp.value : "").trim();
-  if (v === SITE_SUBTITLE) { showToast("小标题未变化"); return; }
-  SITE_SUBTITLE = v;
-  applySubtitle();
-  dirty = true;
-  await save();
+/* ===== 头部第 3 行实时刷新（周次范围 / 人数 / 课程数） ===== */
+function renderHeaderMeta() {
+  const range = document.getElementById("hdrWeekRange");
+  if (range) range.textContent = `第 ${WEEK_START} 周 — 第 ${WEEK_END} 周`;
+  const people = document.getElementById("hdrPeople");
+  if (people) people.textContent = `共 ${HEAD_COUNT} 人`;
+  const cc = document.getElementById("hdrCourseCount");
+  if (cc) cc.textContent = `${COURSES.length} 门课程`;
+}
+
+/* 原地内联编辑：点击文字切换为输入框，回车/失焦自动保存（仅编辑模式） */
+function setupInlineEdit(el, onCommit) {
+  if (!el) return;
+  el.classList.add("hdr-editable");
+  el.addEventListener("click", () => {
+    if (!editMode || el.querySelector("input")) return;
+    const cur = el.textContent;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = cur;
+    input.className = "inline-edit-input";
+    el.textContent = "";
+    el.appendChild(input);
+    input.focus(); input.select();
+    let done = false;
+    const commit = () => {
+      if (done) return; done = true;
+      const v = input.value.trim();
+      el.textContent = v || cur;
+      if (v && v !== cur) onCommit(v);
+    };
+    input.addEventListener("blur", commit);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+      else if (e.key === "Escape") { input.value = cur; input.blur(); }
+    });
+  });
+}
+/* 「共XX人」专用内联编辑：仅输入数字，提交后写 HEAD_COUNT 并持久化 */
+function setupPeopleEdit(el) {
+  if (!el) return;
+  el.classList.add("hdr-editable");
+  el.addEventListener("click", () => {
+    if (!editMode || el.querySelector("input")) return;
+    const cur = HEAD_COUNT;
+    const input = document.createElement("input");
+    input.type = "number"; input.min = "0"; input.value = String(cur);
+    input.className = "inline-edit-input";
+    el.textContent = "";
+    el.appendChild(input);
+    input.focus(); input.select();
+    let done = false;
+    const commit = () => {
+      if (done) return; done = true;
+      const v = parseInt(input.value, 10);
+      HEAD_COUNT = isNaN(v) ? cur : Math.max(0, v);
+      el.textContent = `共 ${HEAD_COUNT} 人`;
+      renderHeaderMeta();
+      dirty = true; save();
+    };
+    input.addEventListener("blur", commit);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+      else if (e.key === "Escape") { input.value = String(cur); input.blur(); }
+    });
+  });
 }
 
 /* ===== 本地草稿：保存失败时暂存编辑，防止刷新/重开后丢失 ===== */
@@ -1161,15 +1230,15 @@ function clearWeekGridCache() {
   for (const k in _weekGridCache) delete _weekGridCache[k];
 }
 
-/* 周次记忆：优先读取本地 localStorage 中上次选择的周次；未记录则用默认起始周（WEEK_MIN）。
+/* 周次记忆：优先读取本地 localStorage 中上次选择的周次；未记录则用默认起始周（WEEK_START）。
    不再自动定位到“今天”所在周，由浏览器记住用户上一次点击的周次。 */
 const WEEK_KEY = "fosu_week";
 function loadWeek() {
   try {
     const v = parseInt(localStorage.getItem(WEEK_KEY), 10);
-    if (!isNaN(v) && v >= WEEK_MIN && v <= WEEK_MAX) return v;
+    if (!isNaN(v) && v >= WEEK_START && v <= WEEK_END) return v;
   } catch (_) {}
-  return WEEK_MIN;
+  return WEEK_START;
 }
 function saveWeek() {
   try { localStorage.setItem(WEEK_KEY, String(currentWeek)); } catch (_) {}
@@ -1268,7 +1337,7 @@ async function save(quiet, retried403) {
   saving = true;
   try {
     /* 教学周基准配置随课表数据一同持久化（不改动 courses/notes 原有结构） */
-    const payload = { rev: rev + 1, edited: true, title: SITE_TITLE, subtitle: SITE_SUBTITLE, courses: COURSES, notes: NOTES, weekBase: WEEK_BASE };
+    const payload = { rev: rev + 1, edited: true, title: SITE_TITLE, subtitle: SITE_SUBTITLE, courses: COURSES, notes: NOTES, week1Base: WEEK_BASE, weekStart: WEEK_START, weekEnd: WEEK_END, headCount: HEAD_COUNT };
     const r = await fetch("/api/schedule", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Admin-Key": getAdminKey() || "" },
@@ -1616,7 +1685,7 @@ function editEscape(s) {
 }
 
 /* ===== 新增：学期设置（管理员后台） ===== */
-/* 保存「教学第二周起始日期」 */
+/* 保存「本学期第 1 教学周起始公历日期」 */
 function saveWeekBase() {
   const inp = document.getElementById("weekBaseInput");
   const hint = document.getElementById("weekBaseHint");
@@ -1637,7 +1706,26 @@ function saveWeekBase() {
   saveWeek();
   render();
   save();
-  showToast("✓ 第二周起始日期已保存，教学周已重算");
+  showToast("✓ 第 1 教学周起始日期已保存，教学周已重算");
+}
+
+/* 保存「展示周次范围」：同步刷新周次按钮与头部第 3 行，持久化为全局公共配置 */
+function saveWeekRange() {
+  const si = document.getElementById("weekStartInput");
+  const ei = document.getElementById("weekEndInput");
+  const hint = document.getElementById("weekRangeHint");
+  if (!si || !ei || !hint) return;
+  let s = parseInt(si.value, 10), e = parseInt(ei.value, 10);
+  if (isNaN(s) || isNaN(e) || s < 1 || e < s) {
+    hint.textContent = "✗ 请输入有效范围（起始 ≤ 结束）"; hint.style.color = "#dc2626"; return;
+  }
+  WEEK_START = s; WEEK_END = e;
+  si.value = WEEK_START; ei.value = WEEK_END;
+  hint.textContent = "✓ 已保存"; hint.style.color = "#16a34a";
+  renderHeaderMeta();
+  render();
+  save();
+  showToast("✓ 周次范围已保存（第 " + WEEK_START + "–" + WEEK_END + " 周）");
 }
 
 /* 初始化（数据加载后调用；重复调用只刷新显示，不重复绑定事件） */
@@ -1645,10 +1733,16 @@ let termCfgInited = false;
 function initTermConfig() {
   const inp = document.getElementById("weekBaseInput");
   if (inp) inp.value = WEEK_BASE;
+  const si = document.getElementById("weekStartInput");
+  if (si) si.value = WEEK_START;
+  const ei = document.getElementById("weekEndInput");
+  if (ei) ei.value = WEEK_END;
   if (termCfgInited) return;
   termCfgInited = true;
   const wb = document.getElementById("weekBaseSaveBtn");
   if (wb) wb.addEventListener("click", saveWeekBase);
+  const rb = document.getElementById("weekRangeSaveBtn");
+  if (rb) rb.addEventListener("click", saveWeekRange);
 }
 
 function addEditSlotRow(slot) {
@@ -1735,7 +1829,7 @@ function render() {
   const wb = document.getElementById("weekButtons");
   wb.innerHTML = "";
   const nowWeek = realCurrentTeachingWeek();
-  for (let w = WEEK_MIN; w <= WEEK_MAX; w++) {
+  for (let w = WEEK_START; w <= WEEK_END; w++) {
     const b = document.createElement("button");
     let cls = "week-btn";
     if (w === currentWeek) cls += " active";
@@ -1759,6 +1853,7 @@ function render() {
   }
 
   document.getElementById("wkBig").textContent = `第 ${currentWeek} 周`;
+  renderHeaderMeta();
 
   /* 每列按【真实日期 → 教学日】取课（仅基于 WEEK_BASE 自然日历推算，无放假处理） */
   clearWeekGridCache();
@@ -1960,8 +2055,8 @@ function renderLegend() {
 document.querySelectorAll(".quick-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     const act = btn.dataset.act;
-    if (act === "prev") currentWeek = Math.max(WEEK_MIN, currentWeek - 1);
-    if (act === "next") currentWeek = Math.min(WEEK_MAX, currentWeek + 1);
+    if (act === "prev") currentWeek = Math.max(WEEK_START, currentWeek - 1);
+    if (act === "next") currentWeek = Math.min(WEEK_END, currentWeek + 1);
     /* 回到本周：直接读取全局已算好的真实当前教学周（不经过 localStorage 兜底） */
     if (act === "reset") currentWeek = realCurrentTeachingWeek();
     saveWeek();
@@ -1985,17 +2080,10 @@ editBtn.addEventListener("click", async () => {
   render();
 });
 
-/* 标题编辑事件：保存按钮 + 回车 */
-document.getElementById("titleSaveBtn").addEventListener("click", saveTitle);
-document.getElementById("titleInput").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") { e.preventDefault(); saveTitle(); }
-});
-
-/* 小标题编辑事件：保存按钮 + 回车（与主标题交互一致） */
-document.getElementById("subtitleSaveBtn").addEventListener("click", saveSubtitle);
-document.getElementById("subtitleInput").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") { e.preventDefault(); saveSubtitle(); }
-});
+/* 头部第 1/2 行、第 3 行「共XX人」原地内联编辑（仅编辑模式可改，回车/失焦自动保存） */
+setupInlineEdit(document.getElementById("appTitle"), commitTitle);
+setupInlineEdit(document.getElementById("appSubtitle"), commitSubtitle);
+setupPeopleEdit(document.getElementById("hdrPeople"));
 
 /* ===== file:// 直开检测：直接双击打开文件时无法连接服务器，给出醒目提示 ===== */
 if (location.protocol === "file:") {
@@ -2067,7 +2155,7 @@ async function loadSchedule() {
     applyTitle(data.title);
     applySubtitle(data.subtitle);
     NOTES = data.notes || {};
-    applyWeekConfig(data.weekBase);  /* 应用基准日期并重算周次 */
+    applyWeekConfig(data);  /* 应用基准日期 / 展示范围 / 人数并重算周次 */
     initTermConfig();                 /* 刷新学期设置面板 */
     rev = data.rev || 1;
     syncedRev = rev;

@@ -519,7 +519,7 @@
     <div class="header-inner" data-page-node-id="vRG2gACWomPkEQ1lNGEPfj">
       <div class="school" id="appSubtitle" data-page-node-id="rAAAlCkbQ6CTCIJ6CJH04b">佛山大学 · 2026 年秋季学期</div>
       <div class="title" id="appTitle" data-page-node-id="9XS3o0GPbG4IJQAvcfCoXp">26 级数学专业 研究生周课表</div>
-      <div class="subtitle" data-page-node-id="YfOKY7oh7sZdSp4iuGVjZI">第 2 周 — 第 18 周 · 共 21 人 · 8 门课程</div>
+      <div class="subtitle" data-page-node-id="YfOKY7oh7sZdSp4iuGVjZI"><span id="hdrWeekRange">第 2 周 — 第 18 周</span> · <span id="hdrPeople">共 21 人</span> · <span id="hdrCourseCount">8 门课程</span></div>
     </div>
   </header>
 
@@ -815,16 +815,18 @@ function isHidden(c) {
   return !c.pub && !!getHiddenMap()[c.id];
 }
 
-const WEEK_MIN = 2;
-const WEEK_MAX = 18;
+const WEEK_BASE_OFFSET = 1;            // WEEK_BASE 对应第 1 教学周
+let WEEK_START = 2;                    // 起始教学周（展示范围，可配置）
+let WEEK_END = 18;                     // 结束教学周（展示范围，可配置）
+let HEAD_COUNT = 21;                   // 共修读人数（可配置，"共XX人"）
 
-/* ===== 配置：教学第二周起始日期 + 放假记录（由管理员后台配置，随课表数据下发） =====
-   默认值沿用历史硬编码基准（2026-09-14 = 第2周周一），保证无配置时行为与改动前完全一致。 */
-const DEFAULT_WEEK_BASE = "2026-09-14";
-let WEEK_BASE = DEFAULT_WEEK_BASE;   // "YYYY-MM-DD"，第2周周一
+/* ===== 配置：本学期第 1 教学周起始公历日期（由管理员后台配置，随课表数据下发） =====
+   默认沿用：2026-09-14 是第 2 教学周周一 ⇒ 第 1 教学周周一为 2026-09-07。 */
+const DEFAULT_WEEK_BASE = "2026-09-07";
+let WEEK_BASE = DEFAULT_WEEK_BASE;   // "YYYY-MM-DD"，第 1 教学周周一
 
 /* 兼容旧引用：BASE_DATE 仍指向默认基准（只读语义），真正生效的是 WEEK_BASE */
-const BASE_DATE = new Date(2026, 8, 14); // 月份从0开始，8=9月
+const BASE_DATE = new Date(2026, 8, 7);
 
 /* ===== 全局公共教学周计算层 =====
    全站唯一入口：课表视图 / 详情弹窗 / 呼吸灯 / 自动定位 统一调用本段函数，
@@ -861,7 +863,7 @@ function mondayOf(d) {
 /* 真实日期 → 该用第几周的课 */
 function teachWeekOf(realDate) {
   const base = parseYMD(WEEK_BASE) || BASE_DATE;
-  return Math.round((mondayOf(realDate) - mondayOf(base)) / (7 * 86400000)) + WEEK_MIN;
+  return Math.round((mondayOf(realDate) - mondayOf(base)) / (7 * 86400000)) + WEEK_BASE_OFFSET;
 }
 /* 真实日期 → 该用星期几(1-7) 的课（自然日历直推） */
 function teachDayOf(realDate) {
@@ -879,17 +881,17 @@ function computeTeachingWeek(today) {
   if (targetMonday < baseMonday) {
     return { week: null, valid: false, beforeTerm: true };
   }
-  const n = Math.round((targetMonday - baseMonday) / (7 * 86400000)) + WEEK_MIN;
-  return { week: n, valid: n >= WEEK_MIN && n <= WEEK_MAX };
+  const n = Math.round((targetMonday - baseMonday) / (7 * 86400000)) + WEEK_BASE_OFFSET;
+  return { week: n, valid: n >= WEEK_START && n <= WEEK_END };
 }
 
 /* ---------- 反向：教学周 → 日期（与 computeTeachingWeek 互逆） ----------
    表头日期、详情弹窗日期都走这里，保证与周号推算完全一致。 */
 function getWeekDate(week, day) {
   const base = parseYMD(WEEK_BASE) || BASE_DATE;
-  /* 自然公式：第 week 周星期 day = 基准周一 + (week-WEEK_MIN)*7 + (day-1) */
+  /* 自然公式：第 week 周星期 day = 基准周一 + (week-WEEK_BASE_OFFSET)*7 + (day-1) */
   const monday = mondayOf(base);
-  return addDays(monday, (week - WEEK_MIN) * 7 + ((day || 1) - 1));
+  return addDays(monday, (week - WEEK_BASE_OFFSET) * 7 + ((day || 1) - 1));
 }
 function formatDateDisplay(date) {
   return `${date.getMonth() + 1}/${date.getDate()}`;
@@ -899,18 +901,18 @@ function formatDateDisplay(date) {
    页面打开时调用：得到实时推算的教学周并直接展示。 */
 function resolveInitialWeek() {
   const r = computeTeachingWeek(new Date());
-  if (r.beforeTerm) return WEEK_MIN;                       // 未开学：停在第2周
-  if (r.week == null) return WEEK_MIN;
-  return Math.max(WEEK_MIN, Math.min(WEEK_MAX, r.week));
+  if (r.beforeTerm) return WEEK_START;                   // 未开学：停在第 1 教学周
+  if (r.week == null) return WEEK_START;
+  return Math.max(WEEK_START, Math.min(WEEK_END, r.week));
 }
 
 /* ---------- 全局固定「真实当前教学周」（功能：本周角标） ----------
    仅依赖系统日期 + WEEK_BASE；不受用户当前浏览的 currentWeek 切换影响。
-   返回 WEEK_MIN..WEEK_MAX 范围内整数；未开学或已超出范围时回落到 WEEK_MIN。 */
+   返回 WEEK_START..WEEK_END 范围内整数；未开学或已超出范围时回落到 WEEK_START。 */
 function realCurrentTeachingWeek() {
   const r = computeTeachingWeek(new Date());
-  if (r.week == null) return WEEK_MIN;
-  return Math.max(WEEK_MIN, Math.min(WEEK_MAX, r.week));
+  if (r.week == null) return WEEK_START;
+  return Math.max(WEEK_START, Math.min(WEEK_END, r.week));
 }
 
 /* 已移除自动定位函数 computeCurrentWeek：周次改为由 localStorage 记忆上次选择（见 loadWeek / saveWeek） */
@@ -952,18 +954,18 @@ function clearWeekGridCache() {
   for (const k in _weekGridCache) delete _weekGridCache[k];
 }
 
-/* 周次记忆：优先读取本地 localStorage 中上次选择的周次；未记录则用默认起始周（WEEK_MIN）。
+/* 周次记忆：优先读取本地 localStorage 中上次选择的周次；未记录则用默认起始周（WEEK_START）。
    不再自动定位到“今天”所在周，由浏览器记住用户上一次点击的周次。 */
 const WEEK_KEY = "fosu_week";
 function loadWeek() {
   /* 新增（功能3）：打开页面即用公共函数实时推算教学周，自动定位，无需手动切换 */
   const auto = resolveInitialWeek();
-  if (auto && auto >= WEEK_MIN && auto <= WEEK_MAX) return auto;
+  if (auto && auto >= WEEK_START && auto <= WEEK_END) return auto;
   try {                                   // 兜底：推算失败时才回落到上次记忆
     const v = parseInt(localStorage.getItem(WEEK_KEY), 10);
-    if (!isNaN(v) && v >= WEEK_MIN && v <= WEEK_MAX) return v;
+    if (!isNaN(v) && v >= WEEK_START && v <= WEEK_END) return v;
   } catch (_) {}
-  return WEEK_MIN;
+  return WEEK_START;
 }
 function saveWeek() {
   try { localStorage.setItem(WEEK_KEY, String(currentWeek)); } catch (_) {}
@@ -974,14 +976,31 @@ let currentWeek = loadWeek();
    用"配置签名"判断：首次加载或管理员改了基准日期 → 重新定位教学周；
    轮询期间配置没变 → 不动 currentWeek，绝不把用户手动选的周次拉回去。 */
 let weekCfgSig = null;
-function applyWeekConfig(baseDate) {
-  const base = (typeof baseDate === "string" && parseYMD(baseDate)) ? baseDate : DEFAULT_WEEK_BASE;
-  const sig = "WEEK_BASE=" + base;
-  if (sig === weekCfgSig) return;         // 配置未变化，保持用户当前周次
+function applyWeekConfig(arg) {
+  const data = (arg && typeof arg === "object") ? arg : { weekBase: (typeof arg === "string" ? arg : null) };
+  /* 兼容迁移：旧字段 weekBase（第2周周一）→ week1Base（第1周周一），减 7 天 */
+  let w1 = null;
+  if (data.week1Base && parseYMD(data.week1Base)) w1 = data.week1Base;
+  else if (data.weekBase && parseYMD(data.weekBase)) w1 = toYMD(addDays(parseYMD(data.weekBase), -7));
+  const base = (typeof w1 === "string" && parseYMD(w1)) ? w1 : DEFAULT_WEEK_BASE;
+  if (typeof data.weekStart === "number") WEEK_START = data.weekStart;
+  if (typeof data.weekEnd === "number") WEEK_END = data.weekEnd;
+  if (typeof data.headCount === "number") HEAD_COUNT = data.headCount;
+  const sig = "W1=" + base + "|WS=" + WEEK_START + "|WE=" + WEEK_END + "|HC=" + HEAD_COUNT;
+  if (sig === weekCfgSig) return;
   weekCfgSig = sig;
   WEEK_BASE = base;
-  currentWeek = loadWeek();               // 配置就绪/变更 → 重新定位
-  saveWeek();
+  currentWeek = loadWeek(); saveWeek();
+}
+
+/* 头部第 3 行元信息（只读，与管理端同步） */
+function renderHeaderMeta() {
+  const range = document.getElementById("hdrWeekRange");
+  if (range) range.textContent = `第 ${WEEK_START} 周 — 第 ${WEEK_END} 周`;
+  const people = document.getElementById("hdrPeople");
+  if (people) people.textContent = `共 ${HEAD_COUNT} 人`;
+  const cc = document.getElementById("hdrCourseCount");
+  if (cc) cc.textContent = `${COURSES.length} 门课程`;
 }
 
 /* ===== 详情面板 ===== */
@@ -1111,7 +1130,7 @@ function render() {
   const wb = document.getElementById("weekButtons");
   wb.innerHTML = "";
   const nowWeek = realCurrentTeachingWeek();
-  for (let w = WEEK_MIN; w <= WEEK_MAX; w++) {
+  for (let w = WEEK_START; w <= WEEK_END; w++) {
     const b = document.createElement("button");
     let cls = "week-btn";
     if (w === currentWeek) cls += " active";
@@ -1135,6 +1154,7 @@ function render() {
   }
 
   document.getElementById("wkBig").textContent = `第 ${currentWeek} 周`;
+  renderHeaderMeta();
 
   /* 每一列按【真实日期 → 教学日】取课（仅基于 WEEK_BASE 自然日历推算，无放假处理） */
   clearWeekGridCache();
@@ -1288,8 +1308,8 @@ function renderLegend() {
 document.querySelectorAll(".quick-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     const act = btn.dataset.act;
-    if (act === "prev") currentWeek = Math.max(WEEK_MIN, currentWeek - 1);
-    if (act === "next") currentWeek = Math.min(WEEK_MAX, currentWeek + 1);
+    if (act === "prev") currentWeek = Math.max(WEEK_START, currentWeek - 1);
+    if (act === "next") currentWeek = Math.min(WEEK_END, currentWeek + 1);
     /* 回到本周：直接读取全局已算好的真实当前教学周（不经过 localStorage 兜底） */
     if (act === "reset") currentWeek = realCurrentTeachingWeek();
     saveWeek();
@@ -1307,7 +1327,7 @@ function applyTitle(t) {
   const title = (typeof t === "string" && t.trim()) ? t.trim() : DEFAULT_TITLE;
   const el = document.getElementById("appTitle");
   if (el && el.textContent !== title) el.textContent = title;
-  const tab = title + "（第2-18周）";
+  const tab = title + `（第${WEEK_START}-${WEEK_END}周）`;
   if (document.title !== tab) document.title = tab;
 }
 
@@ -1330,7 +1350,7 @@ async function loadSchedule() {
       COURSES = data.courses;
       COURSES.forEach(ensurePub);
       NOTES = data.notes || {};
-      applyWeekConfig(data.weekBase);  /* 应用基准日期并重算周次 */
+      applyWeekConfig(data);  /* 应用基准日期/周次范围/人数并重算周次 */
       applyTitle(data.title);
       applySubtitle(data.subtitle);
       renderLegend();
