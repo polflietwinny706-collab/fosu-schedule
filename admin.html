@@ -114,6 +114,22 @@
     background: var(--primary); color: #fff; border-color: var(--primary);
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
   }
+  .week-bar #weekButtons { display: flex; gap: 6px; flex-wrap: wrap; }
+  /* 手机端：周次按钮改为单行横滑容器，隐藏滚动条；不影响 PC 多行布局 */
+  @media (max-width: 768px) {
+    .week-bar #weekButtons {
+      flex-wrap: nowrap;
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding: 8px 2px 2px;
+    }
+    .week-bar #weekButtons::-webkit-scrollbar { display: none; }
+    .week-bar #weekButtons .week-btn { flex: 0 0 auto; }
+  }
   .quick-btn:hover { border-color: var(--accent); color: var(--accent); }
 
   .meta-card {
@@ -189,6 +205,17 @@
   .course:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
   .course .name { font-weight: 700; font-size: 12.5px; margin-bottom: 3px; }
   .course .loc, .course .teacher { font-size: 11px; opacity: 0.95; }
+
+  /* ===== 「本周」角标（固定显示在真实当前教学周按钮右上角，与选中态独立） ===== */
+  .week-btn { position: relative; }
+  .week-btn .now-badge {
+    position: absolute; top: -6px; right: -6px;
+    background: #ef4444; color: #fff;
+    font-size: 9.5px; font-weight: 700; line-height: 1;
+    padding: 2px 5px; border-radius: 999px;
+    box-shadow: 0 1px 3px rgba(239,68,68,0.4);
+    pointer-events: none; letter-spacing: 0.02em;
+  }
 
   .c1 { background: linear-gradient(135deg, #3b82f6, #2563eb); }
   .c2 { background: linear-gradient(135deg, #f59e0b, #ea580c); }
@@ -275,6 +302,12 @@
   }
   .legend-type.pub { background: #dbeafe; color: #1d4ed8; }
   .legend-type.ele { background: #ffedd5; color: #c2410c; }
+
+  /* 新增：学期设置面板（仅编辑模式可见，查看态零干扰） */
+  #termCfgPanel { display: none; }
+  body.editing #termCfgPanel { display: block; }
+  .cfg-line { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .cfg-hint { font-size: 12.5px; color: var(--ink-3); }
 
   /* 编辑模式下"修改课程 / 公共课选修切换 / 删除课程"统一收纳在修改弹窗内，图例卡片不再渲染任何操作按钮，保持与查看态视觉一致。 */
 
@@ -568,7 +601,7 @@
 
     <div class="week-bar">
       <span class="label">选择周次</span>
-      <div id="weekButtons" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+      <div id="weekButtons"></div>
       <div class="quick">
         <button class="quick-btn" data-act="prev">← 上一周</button>
         <button class="quick-btn" data-act="next">下一周 →</button>
@@ -591,6 +624,20 @@
     <div class="legend">
       <h3>课程图例</h3>
       <div class="legend-list" id="legendList"></div>
+    </div>
+
+    <!-- 新增：学期设置（仅编辑模式可见） -->
+    <div class="legend" id="termCfgPanel">
+      <h3>学期设置</h3>
+
+      <div class="form-row" style="margin-bottom:16px;">
+        <label>教学第二周起始日期（须为该周周一）</label>
+        <div class="cfg-line">
+          <input type="date" id="weekBaseInput" />
+          <button class="btn primary" id="weekBaseSaveBtn">保存基准日期</button>
+          <span class="cfg-hint" id="weekBaseHint"></span>
+        </div>
+      </div>
     </div>
 
     <div class="footer">
@@ -872,17 +919,91 @@ function ensurePub(c) {
 const WEEK_MIN = 2;
 const WEEK_MAX = 18;
 
-const BASE_DATE = new Date(2026, 8, 14); // 2026年9月14日 = 第2周星期一
+/* ===== 配置：教学第二周起始日期（与 user.html 完全一致） =====
+   默认值沿用历史硬编码基准（2026-09-14 = 第2周周一），保证无配置时行为与改动前完全一致。 */
+const DEFAULT_WEEK_BASE = "2026-09-14";
+let WEEK_BASE = DEFAULT_WEEK_BASE;   // "YYYY-MM-DD"，第2周周一
 
-function getWeekDate(week, day) {
-  const d = new Date(BASE_DATE);
-  d.setDate(d.getDate() + (week - 2) * 7 + (day - 1));
+/* 兼容旧引用 */
+const BASE_DATE = new Date(2026, 8, 14);
+
+/* ===== 全局公共教学周计算层（与 user.html 完全一致，禁止各处独立实现） ===== */
+function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+function parseYMD(s) {
+  if (typeof s !== "string") return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim());
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], da = +m[3];
+  const d = new Date(y, mo - 1, da);
+  if (d.getFullYear() !== y || d.getMonth() !== mo - 1 || d.getDate() !== da) return null;
   return d;
+}
+function toYMD(d) {
+  const p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+function mondayOf(d) {
+  const t = startOfDay(d);
+  return addDays(t, -((t.getDay() + 6) % 7));
+}
+/* 真实日期 → 该用第几周的课（仅 base + 自然日历） */
+function teachWeekOf(realDate) {
+  const base = parseYMD(WEEK_BASE) || BASE_DATE;
+  return Math.round((mondayOf(realDate) - mondayOf(base)) / (7 * 86400000)) + WEEK_MIN;
+}
+/* 真实日期 → 该用星期几(1-7) 的课（自然日历直推） */
+function teachDayOf(realDate) {
+  return ((startOfDay(realDate).getDay() + 6) % 7) + 1;
+}
+function computeTeachingWeek(today) {
+  const base = parseYMD(WEEK_BASE);
+  const t = startOfDay(today || new Date());
+  if (!base) return { week: null, valid: false };
+  const baseMonday = mondayOf(base);
+  const targetMonday = mondayOf(t);
+  if (targetMonday < baseMonday) {
+    return { week: null, valid: false, beforeTerm: true };
+  }
+  const n = Math.round((targetMonday - baseMonday) / (7 * 86400000)) + WEEK_MIN;
+  return { week: n, valid: n >= WEEK_MIN && n <= WEEK_MAX };
+}
+function getWeekDate(week, day) {
+  const base = parseYMD(WEEK_BASE) || BASE_DATE;
+  const monday = mondayOf(base);
+  return addDays(monday, (week - WEEK_MIN) * 7 + ((day || 1) - 1));
 }
 function formatDateDisplay(date) {
   return `${date.getMonth() + 1}/${date.getDate()}`;
 }
-/* 已移除自动定位函数 computeCurrentWeek：周次改为由 localStorage 记忆上次选择（见 loadWeek / saveWeek） */
+function resolveInitialWeek() {
+  const r = computeTeachingWeek(new Date());
+  if (r.beforeTerm) return WEEK_MIN;
+  if (r.week == null) return WEEK_MIN;
+  return Math.max(WEEK_MIN, Math.min(WEEK_MAX, r.week));
+}
+/* 全局固定「真实当前教学周」（本周角标用） */
+function realCurrentTeachingWeek() {
+  const r = computeTeachingWeek(new Date());
+  if (r.week == null) return WEEK_MIN;
+  return Math.max(WEEK_MIN, Math.min(WEEK_MAX, r.week));
+}
+/* 配置应用：基准变更才重定位；签名一致则不打扰 */
+let weekCfgSig = null;
+function applyWeekConfig(baseDate) {
+  const base = (typeof baseDate === "string" && parseYMD(baseDate)) ? baseDate : DEFAULT_WEEK_BASE;
+  const sig = "WEEK_BASE=" + base;
+  if (sig === weekCfgSig) return;
+  weekCfgSig = sig;
+  WEEK_BASE = base;
+  if (typeof currentWeek !== "undefined") { currentWeek = loadWeekByTeaching(); saveWeek(); }
+}
+/* 管理端：打开时同样按教学周定位，但不强制覆盖（管理员常需来回切周检查） */
+function loadWeekByTeaching() {
+  const auto = resolveInitialWeek();
+  if (auto && auto >= WEEK_MIN && auto <= WEEK_MAX) return auto;
+  return WEEK_MIN;
+}
 
 function weekInRanges(week, ranges) {
   return ranges.some(([a,b]) => week >= a && week <= b);
@@ -1030,6 +1151,16 @@ function buildWeek(week) {
   return schedule;
 }
 
+/* 按教学周缓存课表网格（模式2 下同一屏可能跨两个教学周取课） */
+const _weekGridCache = {};
+function weekGrid(week) {
+  if (!_weekGridCache[week]) _weekGridCache[week] = buildWeek(week);
+  return _weekGridCache[week];
+}
+function clearWeekGridCache() {
+  for (const k in _weekGridCache) delete _weekGridCache[k];
+}
+
 /* 周次记忆：优先读取本地 localStorage 中上次选择的周次；未记录则用默认起始周（WEEK_MIN）。
    不再自动定位到“今天”所在周，由浏览器记住用户上一次点击的周次。 */
 const WEEK_KEY = "fosu_week";
@@ -1136,7 +1267,8 @@ async function save(quiet, retried403) {
   if (saving) return;
   saving = true;
   try {
-    const payload = { rev: rev + 1, edited: true, title: SITE_TITLE, subtitle: SITE_SUBTITLE, courses: COURSES, notes: NOTES };
+    /* 教学周基准配置随课表数据一同持久化（不改动 courses/notes 原有结构） */
+    const payload = { rev: rev + 1, edited: true, title: SITE_TITLE, subtitle: SITE_SUBTITLE, courses: COURSES, notes: NOTES, weekBase: WEEK_BASE };
     const r = await fetch("/api/schedule", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Admin-Key": getAdminKey() || "" },
@@ -1483,6 +1615,42 @@ function editEscape(s) {
   });
 }
 
+/* ===== 新增：学期设置（管理员后台） ===== */
+/* 保存「教学第二周起始日期」 */
+function saveWeekBase() {
+  const inp = document.getElementById("weekBaseInput");
+  const hint = document.getElementById("weekBaseHint");
+  if (!inp || !hint) return;
+  const d = parseYMD(inp.value);
+  if (!d) { hint.textContent = "✗ 请选择有效日期"; hint.style.color = "#dc2626"; return; }
+  const mon = mondayOf(d);
+  if (mon.getTime() !== d.getTime()) {
+    hint.textContent = "⚠ 已自动对齐到该周周一";
+    hint.style.color = "#b45309";
+  } else {
+    hint.textContent = "✓ 已保存";
+    hint.style.color = "#16a34a";
+  }
+  WEEK_BASE = toYMD(mon);
+  inp.value = WEEK_BASE;
+  currentWeek = loadWeekByTeaching();
+  saveWeek();
+  render();
+  save();
+  showToast("✓ 第二周起始日期已保存，教学周已重算");
+}
+
+/* 初始化（数据加载后调用；重复调用只刷新显示，不重复绑定事件） */
+let termCfgInited = false;
+function initTermConfig() {
+  const inp = document.getElementById("weekBaseInput");
+  if (inp) inp.value = WEEK_BASE;
+  if (termCfgInited) return;
+  termCfgInited = true;
+  const wb = document.getElementById("weekBaseSaveBtn");
+  if (wb) wb.addEventListener("click", saveWeekBase);
+}
+
 function addEditSlotRow(slot) {
   const s = slot || { weeks: [[currentWeek, currentWeek]], day: 1, slot: [1], loc: "" };
   const box = document.getElementById("eSlotsBox");
@@ -1566,21 +1734,48 @@ function showToast(msg) {
 function render() {
   const wb = document.getElementById("weekButtons");
   wb.innerHTML = "";
+  const nowWeek = realCurrentTeachingWeek();
   for (let w = WEEK_MIN; w <= WEEK_MAX; w++) {
     const b = document.createElement("button");
     let cls = "week-btn";
     if (w === currentWeek) cls += " active";
+    if (w === nowWeek) cls += " now";
     b.className = cls;
     b.textContent = `第 ${w} 周`;
+    if (w === nowWeek) {
+      const tag = document.createElement("span");
+      tag.className = "now-badge";
+      tag.textContent = "本周";
+      b.appendChild(tag);
+    }
     b.onclick = () => { currentWeek = w; saveWeek(); render(); };
     wb.appendChild(b);
   }
 
+  // 手机端横滑容器：把当前选中周次滚动到可视区域中央
+  const _activeBtn = wb.querySelector(".week-btn.active");
+  if (_activeBtn && typeof _activeBtn.scrollIntoView === "function") {
+    _activeBtn.scrollIntoView({ inline: "center", block: "nearest" });
+  }
+
   document.getElementById("wkBig").textContent = `第 ${currentWeek} 周`;
-  const schedule = buildWeek(currentWeek);
+
+  /* 每列按【真实日期 → 教学日】取课（仅基于 WEEK_BASE 自然日历推算，无放假处理） */
+  clearWeekGridCache();
+  const colPlan = [];
+  for (let d = 0; d < 7; d++) {
+    const rd = getWeekDate(currentWeek, d + 1);
+    colPlan.push({
+      realDate: rd,
+      week: teachWeekOf(rd),
+      day:  teachDayOf(rd)
+    });
+  }
 
   let count = 0;
-  schedule.forEach(row => row.forEach(cell => count += cell.length));
+  ROWS.forEach((row, ri) => {
+    for (let d = 0; d < 7; d++) count += weekGrid(colPlan[d].week)[ri][colPlan[d].day - 1].length;
+  });
   document.getElementById("wkCount").textContent = `${count} 节课`;
 
   // 备注：管理员写入的本周备注（仅本周可见，切到其他周自动隐藏；编辑模式下变为可编辑输入框）
@@ -1659,7 +1854,8 @@ function render() {
     grid.appendChild(cellT);
 
     for (let d = 0; d < 7; d++) {
-      const items = schedule[ri][d];
+      // 取课：按教学日映射（模式2 假期后自动复刻放假首天那套星期课表）
+      const items = weekGrid(colPlan[d].week)[ri][colPlan[d].day - 1];
       const cell = document.createElement("div");
       cell.dataset.day = d + 1;
       cell.dataset.slot = row.num;
@@ -1672,6 +1868,7 @@ function render() {
           cell.addEventListener("click", () => openAddModal(d + 1, row.num));
         }
       } else {
+        // 常规单元格（无放假态）
         cell.className = "gc";
         cell.style.background = "transparent";
         cell.style.border = "none";
@@ -1765,7 +1962,8 @@ document.querySelectorAll(".quick-btn").forEach(btn => {
     const act = btn.dataset.act;
     if (act === "prev") currentWeek = Math.max(WEEK_MIN, currentWeek - 1);
     if (act === "next") currentWeek = Math.min(WEEK_MAX, currentWeek + 1);
-    if (act === "reset") currentWeek = loadWeek();
+    /* 回到本周：直接读取全局已算好的真实当前教学周（不经过 localStorage 兜底） */
+    if (act === "reset") currentWeek = realCurrentTeachingWeek();
     saveWeek();
     render();
   });
@@ -1869,6 +2067,8 @@ async function loadSchedule() {
     applyTitle(data.title);
     applySubtitle(data.subtitle);
     NOTES = data.notes || {};
+    applyWeekConfig(data.weekBase);  /* 应用基准日期并重算周次 */
+    initTermConfig();                 /* 刷新学期设置面板 */
     rev = data.rev || 1;
     syncedRev = rev;
     dataEdited = !!data.edited;
@@ -1892,6 +2092,7 @@ wkNoteInputEl.addEventListener("blur", () => {
 renderLegend();
 render();
 loadSchedule();
+initTermConfig();   /* 新增：设置面板初始化（服务器不可达时按钮同样可用） */
 </script>
 <script src="push.js"></script>
 <script>

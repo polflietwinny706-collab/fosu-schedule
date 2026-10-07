@@ -1,20 +1,20 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<html lang="zh-CN" data-page-node-id="ZiE73sCnn7hWmgXkdfBRLU">
+<head data-page-node-id="6ZvFDkXg7O3xg1NFTeDibx">
+<meta charset="UTF-8" data-page-node-id="iC9lbuID83P2wi8xt9ZTQ6" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="TzPjIONWxAVrmsBSPIetGq" />
 <title>佛山大学 26级数学 研究生周课表（第2-18周）</title>
 <!-- ===== 新增：PWA 安装与独立应用支持（仅增量引入，不改原有课表逻辑） ===== -->
-<link rel="manifest" href="manifest.json" />
-<link rel="icon" href="favicon.ico" type="image/x-icon" />
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
-<link rel="apple-touch-icon" href="apple-touch-icon.png" />
-<meta name="theme-color" content="#2b6cb0" />
-<meta name="mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<meta name="apple-mobile-web-app-title" content="FSU课表" />
+<link rel="manifest" href="manifest.json" data-page-node-id="CleHF07z8xoJtJgrIFD1PR" />
+<link rel="icon" href="favicon.ico" type="image/x-icon" data-page-node-id="ABH2GFVivjMTGH6jbGzJYx" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" data-page-node-id="UCblLolNnbCOvgpEAxN0CI" />
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" data-page-node-id="l20zB4xoaohW6ffJWlbtjn" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" data-page-node-id="iKxHzgVVGijhRalXVllaPa" />
+<meta name="theme-color" content="#2b6cb0" data-page-node-id="0xpBTTlOHdXMVqNGIXizNO" />
+<meta name="mobile-web-app-capable" content="yes" data-page-node-id="Vk1qcDJW2yhJvCCIawB9Lv" />
+<meta name="apple-mobile-web-app-capable" content="yes" data-page-node-id="48y9TQep1Fp2HuQOwDKAG0" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" data-page-node-id="17CZqAC4lCHKuAwdvUuxl3" />
+<meta name="apple-mobile-web-app-title" content="FSU课表" data-page-node-id="f3hsPQrXxVh13393TBY8AF" />
 <style>
   :root {
     --bg: #f5f7fb;
@@ -71,6 +71,22 @@
   .week-btn.active {
     background: var(--primary); color: #fff; border-color: var(--primary);
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  }
+  .week-bar #weekButtons { display: flex; gap: 6px; flex-wrap: wrap; }
+  /* 手机端：周次按钮改为单行横滑容器，隐藏滚动条；不影响 PC 多行布局 */
+  @media (max-width: 768px) {
+    .week-bar #weekButtons {
+      flex-wrap: nowrap;
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding: 8px 2px 2px;
+    }
+    .week-bar #weekButtons::-webkit-scrollbar { display: none; }
+    .week-bar #weekButtons .week-btn { flex: 0 0 auto; }
   }
   /* 已移除「今天」徽章：不再自动定位当前周，周次由 localStorage 记忆上次选择 */
   .quick-btn:hover { border-color: var(--accent); color: var(--accent); }
@@ -171,6 +187,17 @@
   @keyframes studyPulse {
     0%,100% { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--primary), 0 8px 22px rgba(37,99,235,0.45); }
     50%     { box-shadow: 0 0 0 3px #fff, 0 0 0 9px rgba(37,99,235,0.55), 0 10px 26px rgba(37,99,235,0.55); }
+  }
+
+  /* ===== 「本周」角标（固定显示在真实当前教学周按钮右上角，与选中态独立） ===== */
+  .week-btn { position: relative; }
+  .week-btn .now-badge {
+    position: absolute; top: -6px; right: -6px;
+    background: #ef4444; color: #fff;
+    font-size: 9.5px; font-weight: 700; line-height: 1;
+    padding: 2px 5px; border-radius: 999px;
+    box-shadow: 0 1px 3px rgba(239,68,68,0.4);
+    pointer-events: none; letter-spacing: 0.02em;
   }
 
   .c1 { background: linear-gradient(135deg, #3b82f6, #2563eb); }
@@ -482,128 +509,128 @@
   }
 </style>
 </head>
-<body>
-  <div class="top-actions">
-    <button class="feedback-fab" id="feedbackFab" title="课程表反馈">?</button>
-    <button class="hide-toggle" id="hideToggle" title="管理本机隐藏的课程">◐ 隐藏课程</button>
+<body data-page-node-id="9tDEKDRjgdvrsvTwSpIfBu">
+  <div class="top-actions" data-page-node-id="XmISDk54sSjHs2QeFcMUwS">
+    <button class="feedback-fab" id="feedbackFab" title="课程表反馈" data-page-node-id="OFrVqqU5i32Wyl354VekBP">?</button>
+    <button class="hide-toggle" id="hideToggle" title="管理本机隐藏的课程" data-page-node-id="Dcu6QkIBp6gsObKkQL5DDG">◐ 隐藏课程</button>
   </div>
 
-  <header class="header">
-    <div class="header-inner">
-      <div class="school" id="appSubtitle">佛山大学 · 2026 年秋季学期</div>
-      <div class="title" id="appTitle">26 级数学专业 研究生周课表</div>
-      <div class="subtitle">第 2 周 — 第 18 周 · 共 21 人 · 8 门课程</div>
+  <header class="header" data-page-node-id="MK8DJgSaRXYnTDqJn5W5EW">
+    <div class="header-inner" data-page-node-id="vRG2gACWomPkEQ1lNGEPfj">
+      <div class="school" id="appSubtitle" data-page-node-id="rAAAlCkbQ6CTCIJ6CJH04b">佛山大学 · 2026 年秋季学期</div>
+      <div class="title" id="appTitle" data-page-node-id="9XS3o0GPbG4IJQAvcfCoXp">26 级数学专业 研究生周课表</div>
+      <div class="subtitle" data-page-node-id="YfOKY7oh7sZdSp4iuGVjZI">第 2 周 — 第 18 周 · 共 21 人 · 8 门课程</div>
     </div>
   </header>
 
-  <main class="container">
-    <div class="week-bar">
-      <span class="label">选择周次</span>
-      <div id="weekButtons" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
-      <div class="quick">
-        <button class="quick-btn" data-act="prev">← 上一周</button>
-        <button class="quick-btn" data-act="next">下一周 →</button>
-        <button class="quick-btn" data-act="reset">回到本周</button>
+  <main class="container" data-page-node-id="v7AYzQHkc0fqUHphvleKRT">
+    <div class="week-bar" data-page-node-id="ziFhMv0FLVL4D8cTlqAClU">
+      <span class="label" data-page-node-id="tARlyTenvDrKT0ggJJfZxb">选择周次</span>
+      <div id="weekButtons" data-page-node-id="KRvIiUiu1XKr58P2ILSpBI"></div>
+      <div class="quick" data-page-node-id="XK5ptmp3mhVPN66HpKgYjR">
+        <button class="quick-btn" data-act="prev" data-page-node-id="ZOEoNeLS0kAp0Dl5UF5w1Y">← 上一周</button>
+        <button class="quick-btn" data-act="next" data-page-node-id="DoJEI3Ac1XBVHITggYh0Si">下一周 →</button>
+        <button class="quick-btn" data-act="reset" data-page-node-id="rRKg3TT44itnaJ0khDjS1q">回到本周</button>
       </div>
     </div>
 
-    <div class="meta-card">
-      <div class="wk" id="wkBig">第 2 周</div>
-      <div class="desc" id="wkDesc">查看所选周课程安排</div>
-      <span class="pill" id="wkCount">0 节课</span>
-      <span class="pill warn" id="wkNote"></span>
+    <div class="meta-card" data-page-node-id="LaU6c0SpGZMEAGwbrvuAAm">
+      <div class="wk" id="wkBig" data-page-node-id="1wDfKBkBooVbJggkyATOgW">第 2 周</div>
+      <div class="desc" id="wkDesc" data-page-node-id="bdjaE0PQuTs6q22C8cJdsC">查看所选周课程安排</div>
+      <span class="pill" id="wkCount" data-page-node-id="w1HkFBIfXExCcrYdLApZeD">0 节课</span>
+      <span class="pill warn" id="wkNote" data-page-node-id="MfckX9VKG7MSN8f4SXZf1J"></span>
     </div>
 
     <!-- ===== 新增（响应式改造 A-Plus）：手机端"显示周六、周日"切换控件，放在课表表格之前 ===== -->
-    <label class="weekend-toggle" id="weekendToggle">
-      <input type="checkbox" id="showWeekendChk" />
-      <span>显示周六、周日</span>
+    <label class="weekend-toggle" id="weekendToggle" data-page-node-id="oHcyYJv3LkuYMPayfb2aol">
+      <input type="checkbox" id="showWeekendChk" data-page-node-id="1xgumekB6GrAAviwHEdjxQ" />
+      <span data-page-node-id="HDTT291KYbBcjyZbu0OHaZ">显示周六、周日</span>
     </label>
 
-    <div class="grid-wrap">
-      <div class="grid" id="grid"></div>
+    <div class="grid-wrap" data-page-node-id="93BDnqogoEiFJz6bXTGbf2">
+      <div class="grid" id="grid" data-page-node-id="n0K0OKwYkhlxAC3z0YQ0pJ"></div>
     </div>
 
-    <div class="legend">
-      <h3>课程图例</h3>
-      <div class="legend-list" id="legendList"></div>
+    <div class="legend" data-page-node-id="kbrwsZMUeH8S92l3K6FsMp">
+      <h3 data-page-node-id="ayMRUldokrnBBEnEseBH1D">课程图例</h3>
+      <div class="legend-list" id="legendList" data-page-node-id="bHM3qbntpVUwrYMNHAZfvr"></div>
     </div>
 
-    <div class="footer">数据来源：课表.jpg + 26级数学研究生课程开课表.xlsx · 由小波整理</div>
+    <div class="footer" data-page-node-id="7RbfJIvNjSmMqlDqhmP8Eu">数据来源：课表.jpg + 26级数学研究生课程开课表.xlsx · 由小波整理</div>
   </main>
 
   <!-- 课程详情面板 -->
-  <div class="detail-overlay" id="detailOverlay">
-    <div class="detail-card" id="detailCard">
-      <button class="detail-close" id="detailClose" aria-label="关闭">&times;</button>
-      <div class="detail-banner" id="detailBanner">
-        <div class="detail-name" id="detailName"></div>
-        <div class="detail-code" id="detailCode"></div>
+  <div class="detail-overlay" id="detailOverlay" data-page-node-id="tI16dlrrEKKOEu8ezse5je">
+    <div class="detail-card" id="detailCard" data-page-node-id="UX9Jl9yOop6xu8NpfSt7vJ">
+      <button class="detail-close" id="detailClose" aria-label="关闭" data-page-node-id="LNAX8vC0A1X6M7UMAiDaTe">&times;</button>
+      <div class="detail-banner" id="detailBanner" data-page-node-id="0Z4rdV9EXJFhDRgELqlod1">
+        <div class="detail-name" id="detailName" data-page-node-id="hdeoVBYMPE955UKIR18p8x"></div>
+        <div class="detail-code" id="detailCode" data-page-node-id="1X7xUnucmZsFyMecTCPd15"></div>
       </div>
-      <div class="detail-body">
-        <div class="detail-row">
-          <span class="dl-label">授课教师</span>
-          <span class="dl-value" id="detailTeacher"></span>
+      <div class="detail-body" data-page-node-id="s077Dz02NUA3CjdmVABCPx">
+        <div class="detail-row" data-page-node-id="FVa2orIo5ykWeHgrnHPXTB">
+          <span class="dl-label" data-page-node-id="OlSHR36bSlqHhVBh7BlEd6">授课教师</span>
+          <span class="dl-value" id="detailTeacher" data-page-node-id="Kq3G0n7FDa97PE14Y680ww"></span>
         </div>
-        <div class="detail-row">
-          <span class="dl-label">学分 / 学时</span>
-          <span class="dl-value" id="detailCredit"></span>
+        <div class="detail-row" data-page-node-id="Dj7J5AA0qBqiben0aPGRbr">
+          <span class="dl-label" data-page-node-id="9mC507Qkfk2CX81UvFCTM6">学分 / 学时</span>
+          <span class="dl-value" id="detailCredit" data-page-node-id="WBUB1ahF3HCXWpdGU34b0g"></span>
         </div>
-        <div class="detail-row">
-          <span class="dl-label">上课时间</span>
-          <span class="dl-value" id="detailTime"></span>
+        <div class="detail-row" data-page-node-id="XR3pIqLNIsEIbfS9yLHU29">
+          <span class="dl-label" data-page-node-id="GIqpbiFY8qWDdcVbvQUQah">上课时间</span>
+          <span class="dl-value" id="detailTime" data-page-node-id="an6CipdB5dtBL3D2BCbe7z"></span>
         </div>
-        <div class="detail-row">
-          <span class="dl-label">上课地点</span>
-          <span class="dl-value" id="detailLoc"></span>
+        <div class="detail-row" data-page-node-id="Ph0AM0ixxyc06oTSUh5SLu">
+          <span class="dl-label" data-page-node-id="Z9h7fENxAtUJ6Ck7pbvWo7">上课地点</span>
+          <span class="dl-value" id="detailLoc" data-page-node-id="Dy3GbXOfAZQTH6vMADF67v"></span>
         </div>
         <!-- 新增：电子书链接（课表格子详情 / 图例详情 共用同一行） -->
-        <div class="detail-row">
-          <span class="dl-label">电子书</span>
-          <span class="dl-value" id="detailEbook"></span>
+        <div class="detail-row" data-page-node-id="uSbbNE6OJ9B6C81gbgSpJz">
+          <span class="dl-label" data-page-node-id="Nt7S0tyHzGvZtgWkbxAv36">电子书</span>
+          <span class="dl-value" id="detailEbook" data-page-node-id="oEZcVLXriA4hKoHdSZwV7y"></span>
         </div>
       </div>
     </div>
   </div>
 
   <!-- 隐藏课程管理面板 -->
-  <div class="hide-overlay" id="hideOverlay">
-    <div class="hide-card">
-      <div class="hide-head">
-        <div class="hh-title">隐藏课程管理</div>
-        <div class="hh-sub">仅「选修课」可隐藏，公共课始终显示。隐藏状态只在本机生效，不会同步给其他人，刷新或重新进入后保持。</div>
+  <div class="hide-overlay" id="hideOverlay" data-page-node-id="ABEyVnJF1IGBlwFQNcQ6WV">
+    <div class="hide-card" data-page-node-id="IlcvwgCH2XD5wrNnup0At7">
+      <div class="hide-head" data-page-node-id="xpzAG11DwutdKA7E8lE13z">
+        <div class="hh-title" data-page-node-id="rDuJGfcg6jFkbE9UW8Fl8Q">隐藏课程管理</div>
+        <div class="hh-sub" data-page-node-id="3bBWax5bqGf0YOqHYPS4l7">仅「选修课」可隐藏，公共课始终显示。隐藏状态只在本机生效，不会同步给其他人，刷新或重新进入后保持。</div>
       </div>
-      <div class="hide-body" id="hideList"></div>
-      <div class="hide-foot">
-        <button class="btn ghost" id="hideClose">关闭</button>
-        <button class="btn primary" id="hideShowAll">全部显示</button>
+      <div class="hide-body" id="hideList" data-page-node-id="mRePhITlx46ZwJmcbBMQRr"></div>
+      <div class="hide-foot" data-page-node-id="kpVu2eSJEEedCjiEZgor1f">
+        <button class="btn ghost" id="hideClose" data-page-node-id="unfhG7rzXevnPD78eH0qR3">关闭</button>
+        <button class="btn primary" id="hideShowAll" data-page-node-id="wVym5N1difxGHtfVbpiW0r">全部显示</button>
       </div>
     </div>
   </div>
 
   <!-- 课程表反馈弹窗（点击右上角 ? 打开） -->
-  <div class="fb-overlay" id="fbOverlay">
-    <div class="fb-card">
-      <div class="fb-head">
-        <h3>课程表反馈</h3>
-        <button class="fb-close" id="fbClose" title="关闭">×</button>
+  <div class="fb-overlay" id="fbOverlay" data-page-node-id="1VVsth1JSGj2fZAgok1XOU">
+    <div class="fb-card" data-page-node-id="oQ3mRK5jhTRDcPDCNNM4wp">
+      <div class="fb-head" data-page-node-id="Jb82labsp91VNJCEBAIWlL">
+        <h3 data-page-node-id="6BC9QFH85O93r1cV9i30Qf">课程表反馈</h3>
+        <button class="fb-close" id="fbClose" title="关闭" data-page-node-id="xba5GhPFEEushgL9a6DEVS">×</button>
       </div>
-      <div class="fb-body">
+      <div class="fb-body" data-page-node-id="mPWfrKAPJHzFVMN5YVzbiy">
         <textarea id="fbText" placeholder="请写下 bug、问题或者课程相关建议"></textarea>
         <!-- 重要说明：内容由后端 /api/notice 提供，管理员可实时编辑，弹窗打开期间每3秒轮询更新 -->
-        <div class="fb-note" id="fbNote"></div>
-        <div class="fb-public-title">公开问答</div>
-        <div class="fb-public-list" id="fbPublicList"></div>
+        <div class="fb-note" id="fbNote" data-page-node-id="2iButabGsmafGCPGpNQ57t"></div>
+        <div class="fb-public-title" data-page-node-id="yrjcISArxfPE1qFYHoTvTP">公开问答</div>
+        <div class="fb-public-list" id="fbPublicList" data-page-node-id="QR307Tiyn5ivDXx1J3LxwC"></div>
       </div>
-      <div class="fb-foot">
-        <button class="fb-btn-close" id="fbCancel">关闭</button>
-        <button class="fb-btn-submit" id="fbSubmit">提交反馈</button>
+      <div class="fb-foot" data-page-node-id="i2vZIrPGCDOlsFdoUDX7wa">
+        <button class="fb-btn-close" id="fbCancel" data-page-node-id="Y6z2H3zAnWGlBSkjRuNGCi">关闭</button>
+        <button class="fb-btn-submit" id="fbSubmit" data-page-node-id="ho0RVbiV4KZ32DPzKza8Cr">提交反馈</button>
       </div>
     </div>
   </div>
 
   <!-- Toast 提示 -->
-  <div class="fb-toast" id="fbToast"></div>
+  <div class="fb-toast" id="fbToast" data-page-node-id="ceE3lFhfBjxIY7hZfCbyPs"></div>
 
 <script>
 /* ===== 课程默认数据（内置兜底；正常运行时由服务器 /api/schedule 提供，管理员端修改后自动同步） =====
@@ -791,16 +818,99 @@ function isHidden(c) {
 const WEEK_MIN = 2;
 const WEEK_MAX = 18;
 
-/* 基准日：2026年9月14日 = 第2周星期一 */
+/* ===== 配置：教学第二周起始日期 + 放假记录（由管理员后台配置，随课表数据下发） =====
+   默认值沿用历史硬编码基准（2026-09-14 = 第2周周一），保证无配置时行为与改动前完全一致。 */
+const DEFAULT_WEEK_BASE = "2026-09-14";
+let WEEK_BASE = DEFAULT_WEEK_BASE;   // "YYYY-MM-DD"，第2周周一
+
+/* 兼容旧引用：BASE_DATE 仍指向默认基准（只读语义），真正生效的是 WEEK_BASE */
 const BASE_DATE = new Date(2026, 8, 14); // 月份从0开始，8=9月
 
-function getWeekDate(week, day) {
-  const d = new Date(BASE_DATE);
-  d.setDate(d.getDate() + (week - 2) * 7 + (day - 1));
+/* ===== 全局公共教学周计算层 =====
+   全站唯一入口：课表视图 / 详情弹窗 / 呼吸灯 / 自动定位 统一调用本段函数，
+   任何模块禁止再独立编写日期加减或周次推算逻辑。 */
+
+/* ---------- 基础日期工具（全部本地时区，规避 UTC 跨天/跨年误差） ---------- */
+function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+
+function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+
+/* "YYYY-MM-DD" → Date；非法输入返回 null（跨月/跨年/空值均安全） */
+function parseYMD(s) {
+  if (typeof s !== "string") return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim());
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], da = +m[3];
+  const d = new Date(y, mo - 1, da);
+  // 校验真实存在（排除 2026-02-30 这类非法日期）
+  if (d.getFullYear() !== y || d.getMonth() !== mo - 1 || d.getDate() !== da) return null;
   return d;
+}
+function toYMD(d) {
+  const p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+/* 该日期所在自然周的周一（周一为一周起点，与 DAYS 顺序一致） */
+function mondayOf(d) {
+  const t = startOfDay(d);
+  const wd = (t.getDay() + 6) % 7;   // 0=周一 … 6=周日
+  return addDays(t, -wd);
+}
+
+/* ---------- 真实日期 → 教学周 / 星期（仅基于 WEEK_BASE 推算，无任何放假处理） ---------- */
+/* 真实日期 → 该用第几周的课 */
+function teachWeekOf(realDate) {
+  const base = parseYMD(WEEK_BASE) || BASE_DATE;
+  return Math.round((mondayOf(realDate) - mondayOf(base)) / (7 * 86400000)) + WEEK_MIN;
+}
+/* 真实日期 → 该用星期几(1-7) 的课（自然日历直推） */
+function teachDayOf(realDate) {
+  return ((startOfDay(realDate).getDay() + 6) % 7) + 1;
+}
+
+/* ---------- 核心：日期 → 教学周（极简：仅 base + 自然日历） ----------
+   返回 { week, valid, beforeTerm }，无任何放假耦合。 */
+function computeTeachingWeek(today) {
+  const base = parseYMD(WEEK_BASE);
+  const t = startOfDay(today || new Date());
+  if (!base) return { week: null, valid: false };
+  const baseMonday = mondayOf(base);
+  const targetMonday = mondayOf(t);
+  if (targetMonday < baseMonday) {
+    return { week: null, valid: false, beforeTerm: true };
+  }
+  const n = Math.round((targetMonday - baseMonday) / (7 * 86400000)) + WEEK_MIN;
+  return { week: n, valid: n >= WEEK_MIN && n <= WEEK_MAX };
+}
+
+/* ---------- 反向：教学周 → 日期（与 computeTeachingWeek 互逆） ----------
+   表头日期、详情弹窗日期都走这里，保证与周号推算完全一致。 */
+function getWeekDate(week, day) {
+  const base = parseYMD(WEEK_BASE) || BASE_DATE;
+  /* 自然公式：第 week 周星期 day = 基准周一 + (week-WEEK_MIN)*7 + (day-1) */
+  const monday = mondayOf(base);
+  return addDays(monday, (week - WEEK_MIN) * 7 + ((day || 1) - 1));
 }
 function formatDateDisplay(date) {
   return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+/* ---------- 自动定位（功能3） ----------
+   页面打开时调用：得到实时推算的教学周并直接展示。 */
+function resolveInitialWeek() {
+  const r = computeTeachingWeek(new Date());
+  if (r.beforeTerm) return WEEK_MIN;                       // 未开学：停在第2周
+  if (r.week == null) return WEEK_MIN;
+  return Math.max(WEEK_MIN, Math.min(WEEK_MAX, r.week));
+}
+
+/* ---------- 全局固定「真实当前教学周」（功能：本周角标） ----------
+   仅依赖系统日期 + WEEK_BASE；不受用户当前浏览的 currentWeek 切换影响。
+   返回 WEEK_MIN..WEEK_MAX 范围内整数；未开学或已超出范围时回落到 WEEK_MIN。 */
+function realCurrentTeachingWeek() {
+  const r = computeTeachingWeek(new Date());
+  if (r.week == null) return WEEK_MIN;
+  return Math.max(WEEK_MIN, Math.min(WEEK_MAX, r.week));
 }
 
 /* 已移除自动定位函数 computeCurrentWeek：周次改为由 localStorage 记忆上次选择（见 loadWeek / saveWeek） */
@@ -832,11 +942,24 @@ function buildWeek(week) {
   return schedule;
 }
 
+/* 按教学周缓存课表网格：同一屏可能跨周取课，逐列按需构建并缓存，避免同一周重复 buildWeek。 */
+const _weekGridCache = {};
+function weekGrid(week) {
+  if (!_weekGridCache[week]) _weekGridCache[week] = buildWeek(week);
+  return _weekGridCache[week];
+}
+function clearWeekGridCache() {
+  for (const k in _weekGridCache) delete _weekGridCache[k];
+}
+
 /* 周次记忆：优先读取本地 localStorage 中上次选择的周次；未记录则用默认起始周（WEEK_MIN）。
    不再自动定位到“今天”所在周，由浏览器记住用户上一次点击的周次。 */
 const WEEK_KEY = "fosu_week";
 function loadWeek() {
-  try {
+  /* 新增（功能3）：打开页面即用公共函数实时推算教学周，自动定位，无需手动切换 */
+  const auto = resolveInitialWeek();
+  if (auto && auto >= WEEK_MIN && auto <= WEEK_MAX) return auto;
+  try {                                   // 兜底：推算失败时才回落到上次记忆
     const v = parseInt(localStorage.getItem(WEEK_KEY), 10);
     if (!isNaN(v) && v >= WEEK_MIN && v <= WEEK_MAX) return v;
   } catch (_) {}
@@ -846,6 +969,20 @@ function saveWeek() {
   try { localStorage.setItem(WEEK_KEY, String(currentWeek)); } catch (_) {}
 }
 let currentWeek = loadWeek();
+
+/* 新增：教学周配置应用（供数据加载后调用）
+   用"配置签名"判断：首次加载或管理员改了基准日期 → 重新定位教学周；
+   轮询期间配置没变 → 不动 currentWeek，绝不把用户手动选的周次拉回去。 */
+let weekCfgSig = null;
+function applyWeekConfig(baseDate) {
+  const base = (typeof baseDate === "string" && parseYMD(baseDate)) ? baseDate : DEFAULT_WEEK_BASE;
+  const sig = "WEEK_BASE=" + base;
+  if (sig === weekCfgSig) return;         // 配置未变化，保持用户当前周次
+  weekCfgSig = sig;
+  WEEK_BASE = base;
+  currentWeek = loadWeek();               // 配置就绪/变更 → 重新定位
+  saveWeek();
+}
 
 /* ===== 详情面板 ===== */
 const overlay = document.getElementById("detailOverlay");
@@ -970,25 +1107,54 @@ document.addEventListener("keydown", (e) => {
 });
 
 function render() {
-  // 周次按钮
+  // 周次按钮（本周按钮永久带角标；选中态由 .active 控制，与角标互不干扰）
   const wb = document.getElementById("weekButtons");
   wb.innerHTML = "";
+  const nowWeek = realCurrentTeachingWeek();
   for (let w = WEEK_MIN; w <= WEEK_MAX; w++) {
     const b = document.createElement("button");
     let cls = "week-btn";
     if (w === currentWeek) cls += " active";
+    if (w === nowWeek) cls += " now";
     b.className = cls;
     b.textContent = `第 ${w} 周`;
+    if (w === nowWeek) {
+      const tag = document.createElement("span");
+      tag.className = "now-badge";
+      tag.textContent = "本周";
+      b.appendChild(tag);
+    }
     b.onclick = () => { currentWeek = w; saveWeek(); render(); };
     wb.appendChild(b);
   }
 
+  // 手机端横滑容器：把当前选中周次滚动到可视区域中央
+  const _activeBtn = wb.querySelector(".week-btn.active");
+  if (_activeBtn && typeof _activeBtn.scrollIntoView === "function") {
+    _activeBtn.scrollIntoView({ inline: "center", block: "nearest" });
+  }
+
   document.getElementById("wkBig").textContent = `第 ${currentWeek} 周`;
-  const schedule = buildWeek(currentWeek);
+
+  /* 每一列按【真实日期 → 教学日】取课（仅基于 WEEK_BASE 自然日历推算，无放假处理） */
+  clearWeekGridCache();
+  const colPlan = [];
+  for (let d = 0; d < 7; d++) {
+    const rd = getWeekDate(currentWeek, d + 1);
+    colPlan.push({
+      realDate: rd,
+      week: teachWeekOf(rd),
+      day:  teachDayOf(rd)
+    });
+  }
 
   // 统计课程数（按独立节次计）
   let count = 0;
-  schedule.forEach(row => row.forEach(cell => count += cell.length));
+  ROWS.forEach((row, ri) => {
+    for (let d = 0; d < 7; d++) {
+      count += weekGrid(colPlan[d].week)[ri][colPlan[d].day - 1].length;
+    }
+  });
   document.getElementById("wkCount").textContent = `${count} 节课`;
 
   /* 已移除「今天/本周」标签：周次不再自动定位，由 localStorage 记忆上次选择 */
@@ -1039,7 +1205,9 @@ function render() {
     for (let d = 0; d < 7; d++) {
       // 当前列是否等于"今天星期"列：一次性计算的 TODAY_DAY_IDX（由浏览器本地 Date 推导）
       const isTodayCol = (d === TODAY_DAY_IDX);
-      const items = schedule[ri][d];
+      // 取课：按教学日映射（仅基于 WEEK_BASE 自然日历推算）
+      const plan = colPlan[d];
+      const items = weekGrid(plan.week)[ri][plan.day - 1];
       const cell = document.createElement("div");
       if (items.length === 0) {
         cell.className = "gc empty-cell";
@@ -1122,7 +1290,8 @@ document.querySelectorAll(".quick-btn").forEach(btn => {
     const act = btn.dataset.act;
     if (act === "prev") currentWeek = Math.max(WEEK_MIN, currentWeek - 1);
     if (act === "next") currentWeek = Math.min(WEEK_MAX, currentWeek + 1);
-    if (act === "reset") currentWeek = loadWeek();
+    /* 回到本周：直接读取全局已算好的真实当前教学周（不经过 localStorage 兜底） */
+    if (act === "reset") currentWeek = realCurrentTeachingWeek();
     saveWeek();
     render();
   });
@@ -1161,6 +1330,7 @@ async function loadSchedule() {
       COURSES = data.courses;
       COURSES.forEach(ensurePub);
       NOTES = data.notes || {};
+      applyWeekConfig(data.weekBase);  /* 应用基准日期并重算周次 */
       applyTitle(data.title);
       applySubtitle(data.subtitle);
       renderLegend();
