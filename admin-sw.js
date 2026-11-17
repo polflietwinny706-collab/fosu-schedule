@@ -1,5 +1,5 @@
 // 管理员端 Service Worker：离线缓存外壳 + 接收系统推送通知
-const CACHE = "fosu-admin-v3";
+const CACHE = "fosu-admin-v4";
 const PRECACHE = ["/admin.html", "/admin-manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (e) => {
